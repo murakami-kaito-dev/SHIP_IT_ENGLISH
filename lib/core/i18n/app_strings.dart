@@ -142,6 +142,13 @@ class AppStrings {
   final String historyNoStudyThatDay;
   final String sessionHelpTitle;
   final String sessionHelpTooltip;
+  // ゲーミフィケーション
+  final String levelUpTitle;
+  final String levelWord;
+  final String continueButton;
+  final String streakGoalReached;
+  final String xpEarned;
+  final String keepGoing;
 
   // 週間サマリー
   final String weeklyTitle;
@@ -264,6 +271,12 @@ class AppStrings {
     required this.historyNoStudyThatDay,
     required this.sessionHelpTitle,
     required this.sessionHelpTooltip,
+    required this.levelUpTitle,
+    required this.levelWord,
+    required this.continueButton,
+    required this.streakGoalReached,
+    required this.xpEarned,
+    required this.keepGoing,
     required this.weeklyTitle,
     required this.searchTitle,
     required this.searchHint,
@@ -529,6 +542,12 @@ class AppStrings {
     historyNoStudyThatDay: '学習なし',
     sessionHelpTitle: '今日のセッションの見かた',
     sessionHelpTooltip: 'この画面の説明',
+    levelUpTitle: 'LEVEL UP!',
+    levelWord: 'レベル',
+    continueButton: '続ける',
+    streakGoalReached: '今日のストリーク達成！',
+    xpEarned: '獲得XP',
+    keepGoing: 'どんまい！次いこう',
     weeklyTitle: '今週の学習',
     searchTitle: 'カード検索',
     searchHint: 'フレーズや日本語で検索',
@@ -650,6 +669,12 @@ class AppStrings {
     historyNoStudyThatDay: 'No study',
     sessionHelpTitle: 'Understanding Today\'s Session',
     sessionHelpTooltip: 'About this screen',
+    levelUpTitle: 'LEVEL UP!',
+    levelWord: 'Level',
+    continueButton: 'Continue',
+    streakGoalReached: 'Today\'s streak complete!',
+    xpEarned: 'XP earned',
+    keepGoing: 'Keep going!',
     weeklyTitle: 'This Week',
     searchTitle: 'Search Cards',
     searchHint: 'Search phrases or translations',
