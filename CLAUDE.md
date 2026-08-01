@@ -1,0 +1,275 @@
+# ShipIt English — CLAUDE.md
+
+Claude Code がこのプロジェクトを触る際に必ず参照するコンテキスト。
+
+---
+
+## プロジェクト概要
+
+- **アプリ名**: ShipIt English
+- **目的**: 海外テック企業で働くための技術英語を、毎日5〜10分のSRS学習で習得するFlutterアプリ
+- **仕様書**: `docs/shipit_english_spec_v4.md`（詳細仕様はすべてここに記載）
+- **現フェーズ**: Phase 1 MVP 完成済み・実機動作確認済み・App Store申請準備中
+
+### 関連ドキュメント
+
+| ドキュメント | 用途 |
+|-------------|------|
+| `docs/technical_overview.md` | 新規参画エンジニア向けの技術全体像 |
+| `docs/ai_context.md` | AIアシスタント向け実装コンテキスト（**実装を変えたら更新**） |
+| `docs/app_store_connect_submission.md` | App Store Connect 申請の全手順・全入力値 |
+| `docs/subscription_setup_guide.md` | サブスク（ShipIt Pro）の有効化手順・App Store Connect操作・Sandboxテスト |
+| `docs/backup_and_restore.md` | 学習データのバックアップ/復元の仕様と操作手順 |
+| `docs/feature_recommendations.md` | 追加機能の優先度リスト |
+| `docs/build_and_release.md` | ビルド・署名・ストア申請の操作手順 |
+| `docs/app_store_free_release_checklist.md` | 課金なし配布の対応済み項目＋開発者の手作業チェックリスト |
+
+---
+
+## 技術スタック
+
+| 項目 | 内容 |
+|------|------|
+| Flutter | 3.24.3 / Dart 3.5.3 |
+| 状態管理 | Riverpod（StateNotifier / FutureProvider / autoDispose） |
+| ローカルDB | SQLite（sqflite） |
+| ルーティング | go_router（ShellRoute + NoTransitionPage） |
+| 通知 | flutter_local_notifications + timezone |
+| 設定 | shared_preferences |
+
+---
+
+## ディレクトリ構成
+
+```
+lib/
+├── app.dart                        # GoRouter + AppShell + BottomNavigationBar
+├── main.dart                       # 起動・初期化フロー
+├── core/
+│   ├── constants/app_constants.dart
+│   ├── database/database_helper.dart   # SQLite初期化・マイグレーション
+│   ├── database/seed_data.dart         # JSONからカード投入（バージョン管理付き）
+│   ├── providers/core_providers.dart   # databaseProvider / cardRepositoryProvider / srsEngineProvider
+│   ├── services/notification_service.dart
+│   ├── services/streak_manager.dart
+│   ├── theme/app_theme.dart
+│   └── utils/date_utils.dart
+└── features/
+    ├── home/
+    │   ├── presentation/home_screen.dart
+    │   └── providers/home_providers.dart
+    ├── study/
+    │   ├── data/card_repository.dart           # 抽象クラス
+    │   ├── data/local_card_repository.dart     # SQLite実装
+    │   ├── domain/models/card_model.dart
+    │   ├── domain/models/learning_progress.dart
+    │   ├── domain/models/study_session.dart
+    │   ├── domain/srs_engine.dart              # SM-2アルゴリズム
+    │   ├── presentation/study_screen.dart
+    │   ├── presentation/session_complete_screen.dart
+    │   ├── presentation/widgets/flip_card.dart
+    │   ├── presentation/widgets/rating_buttons.dart
+    │   ├── presentation/widgets/swipe_card_wrapper.dart
+    │   └── providers/study_providers.dart      # StudySessionNotifier / lastSessionResultProvider
+    ├── categories/
+    │   ├── presentation/categories_screen.dart
+    │   ├── presentation/category_detail_screen.dart   # カテゴリ内カード一覧+詳細シート（/category/:id）
+    │   └── providers/categories_providers.dart        # categoriesProvider / categoryCardsProvider / categoryDefs
+    └── settings/
+        ├── presentation/settings_screen.dart
+        └── providers/settings_providers.dart
+assets/
+└── data/cards.json    # 単語カードの本体（135枚 / 7カテゴリ）
+docs/
+├── shipit_english_spec_v4.md   # 実装仕様書
+└── build_and_release.md        # ビルド・App Store申請手順書
+test/
+└── unit/
+    ├── srs_engine_test.dart
+    ├── streak_test.dart
+    └── daily_set_test.dart
+```
+
+---
+
+## 単語カードの追加方法
+
+単語カードの**唯一の本体**は `assets/data/cards.json`。
+
+### カードの書式
+
+```json
+{
+  "id": "cr_026",
+  "phrase": "Let's take this offline",
+  "translation": "この話は別途話しましょう",
+  "example": "That's a good point, but let's take this offline so we don't block the rest of the team.",
+  "example_translation": "良い指摘だけど、チームの議論を止めないよう別途話しましょう。",
+  "context": "会議中に脱線しそうな話題を後回しにする際に使う定番フレーズ。",
+  "context_en": "A standard phrase for deferring a topic that risks derailing a meeting.",
+  "category": "meetings",
+  "difficulty": 1
+}
+```
+
+> `context_en` は英語話者モード用。省略すると空文字になり `context`（日本語）にフォールバックする。
+> まとめて生成する場合は Gemini API（`dart_defines.json` の GEMINI_API_KEY / モデルは gemini-2.5-flash）で一括翻訳する。
+
+### カテゴリID一覧（計1500枚 / 14カテゴリ・cards.json v1.5.0）
+
+| ID | カテゴリ | 枚数 | 無料/Pro(※) |
+|----|---------|------|------------|
+| `code_review` | Code Review | 130枚 | 無料 |
+| `meetings` | Meetings | 110枚 | 無料 |
+| `slack` | Slack | 110枚 | 無料 |
+| `git_cicd` | Git & CI/CD | 110枚 | Pro |
+| `architecture` | Architecture | 110枚 | Pro |
+| `incident` | Incident Response | 105枚 | Pro |
+| `interview` | Tech Interview | 105枚 | Pro |
+| `planning` | Sprint Planning | 105枚 | Pro |
+| `career` | 1on1 / Career | 105枚 | Pro |
+| `remote_work` | Remote / Async | 105枚 | Pro |
+| `documentation` | Docs / Writing | 105枚 | Pro |
+| `tech_debt` | Refactoring & Tech Debt | 100枚 | Pro |
+| `qa_testing` | QA & Testing | 100枚 | Pro |
+| `security` | Security & Compliance | 100枚 | Pro |
+
+※ 無料/Pro の区分はサブスク有効化後のみ意味を持つ（現在は全カテゴリ開放）。区分の変更は `MonetizationConfig.freeCategoryIds`。
+カテゴリを追加したら `categories_providers.dart` の `categoryDefs` にも追加すること。
+
+### カードを追加したあとの手順
+
+1. `cards.json` の `"version"` を**必ず**変更する（例: `"1.5.0"` → `"1.6.0"`）
+2. カテゴリを追加した場合は `categories_providers.dart` の `categoryDefs` にも追加する（**忘れるとカテゴリタブに表示されない**）
+3. アプリを再起動するとシードが自動で取り込まれる
+4. 既存の学習進捗（SRS状態）は保持される
+
+> ⚠️ **バージョンを上げ忘れると、カードを増やしてもDBに反映されない**（過去に790枚のまま止まっていた実績あり）。
+> 反映確認は `sqlite3 <db> "SELECT COUNT(*) FROM cards;"` が早い。
+
+---
+
+## 実装済み済み機能（Phase 1 MVP）
+
+- [x] SM-2 ベース SRS アルゴリズム
+- [x] フリップカード（Y軸3Dアニメーション 300ms）
+- [x] スワイプ操作（左=忘れた / 右=覚えてた、閾値30%）
+- [x] 評価ボタン（忘れた / 曖昧 / 覚えてた）
+- [x] 「忘れた」カードの再出題（上限2回）
+- [x] デイリーセッション（復習カード全件 + 新規カード上限設定枚数）
+- [x] ストリーク管理（2日以上空いたらリセット）
+- [x] ローカル通知（毎日08:00、設定変更可）
+- [x] 学習データリセット機能
+- [x] BottomNavigationBar のタブ切り替え（アニメーションなし即時切替）
+- [x] ユニットテスト（SRS全ケース・ストリーク・デイリーセット）
+- [x] カテゴリ詳細画面（カード一覧+ステータスチップ+詳細ボトムシート）
+- [x] UIUX改善（ハプティクス・カードシャドウ・学習画面レイアウト安定化・設定セクション化）
+- [x] 2言語モード（日本語話者=技術英語を学ぶ / 英語話者=技術日本語を学ぶ）+ 全UIローカライズ
+- [x] オンボーディング（初回起動時の言語モード選択+使い方説明）
+- [x] TTS音声読み上げ（flutter_tts・端末内蔵音声・オフライン）
+- [x] カテゴリ別学習セッション（`/study?category=<id>`）
+- [x] アプリ内レビュー依頼（in_app_review・ストリーク3日以上で一度だけ）
+- [x] サブスクリプション「ShipIt Pro」一式（**休眠状態**。`MonetizationConfig.subscriptionEnabled = false`。有効化は `docs/subscription_setup_guide.md` 参照）
+  - 課金・パウォール・ゲートに加え、**失効判定**（解約/返金を起動・復帰時に検出してPro解除）・**管理/解約導線**・**設定からの復元**まで実装済み
+- [x] 学習データのバックアップ/復元（JSON書き出し・読み込み。`docs/backup_and_restore.md`）
+- [x] ストリーク危機通知（未学習の日だけ23:00固定・設定不可・メッセージ10種ランダム）
+- [x] 週間学習サマリー（ホームに直近7日の棒グラフ）
+- [x] 学習履歴カレンダー（ホームのストリークバッジ🔥をタップ→`/history`。月送り・学習日をマーク・今月/累計の学習日数）
+- [x] カード検索（`/search`。フレーズ・和訳・例文の部分一致）
+- [x] 学習セッションの途中終了（戻る/システムバックでその時点まで記録＝ストリーク・統計に反映）
+- [x] カテゴリ学習の設定シート（学習状況フィルタ〈未学習/忘れた/曖昧/覚えてた・複数可〉＋番号範囲＋出題順〈番号順/ランダム〉。枚数指定なし＝一致する全カード。Homeの🎛アイコン／カテゴリ詳細の「このカテゴリを学習」から。`/study?category=<id>&from=<n>&to=<m>&statuses=<csv>&order=<asc|random>`）
+- [x] 新規カード数の設定はホームの「今日のセッション」内に配置（設定タブからは移動）。**上限はカード総数（≈1500）**。スライダーをやめ「− 直接入力 ＋」ステッパー＋プリセット（5/10/25/50/100/最大）に変更（`_NewCardsStepper` / `_NewCardsPresets`。上限は `overallProgressProvider.totalCount` で動的取得）
+- [x] iPhone専用化（`TARGETED_DEVICE_FAMILY = 1`。iPadスクリーンショット不要に）
+- [x] 今日のセッションの新規表示を「残りX / 上限Y枚」に変更（1日の上限が同じ画面で分かる）＋今日学習した新規枚数の補足キャプション。ヘルプ「?」ボタンで各要素の意味を説明するボトムシート（`_showSessionHelp` / `AppStrings.sessionHelpEntries()`）
+- [x] 学習カレンダーの拡張: 日付タップでその日の学習枚数を表示（`_SelectedDayDetail`）＋今月/累計の「学習枚数」も表示（従来の学習日数に加えて。`studyDaysProvider` は日付→枚数のMapなのでリポジトリ変更不要）
+- [x] 評価ボタンに次回復習間隔を表示（「忘れた 10分」「覚えてた 1日」等）。カードをめくった時に現在のSRS状態を読み込み（`StudySessionState.currentProgress`）、`SrsEngine.projectedInterval()` で各評価の次回間隔を予測して表示。表示＝実挙動を保証（内部で `processReview` を呼ぶ副作用なし予測）。「忘れた」は当日中の短い再学習ステップ（`AppConstants.relearnStepMinutes = 10`分後）＝エビングハウスの忘却曲線基準。文言整形は `AppStrings.nextReviewIn(Duration)`（分/時間/日/週間/か月）
+
+---
+
+## 既知のバグ修正履歴
+
+| 症状 | 原因 | 修正 |
+|------|------|------|
+| Start Learning押下でクラッシュ (`BoxConstraints forces an infinite width`) | AppBarの`actions`内に`LinearProgressIndicator`を置いていた | `actions`から削除。`body`側の進捗バーのみ残した |
+| タブ切り替えで右から左スライドアニメーションが発生 | go_routerのデフォルト遷移がiOSスタイルのスライド | ShellRoute内のルートを`pageBuilder` + `NoTransitionPage`に変更 |
+| 実機でスピーカーを押しても音が鳴らない | iOSのオーディオセッション未設定。既定の ambient カテゴリはサイレントスイッチに従うため消音状態で無音になる | `TtsService`で`setSharedInstance(true)` + `setIosAudioCategory(playback, [defaultToSpeaker, mixWithOthers])` を初回に実行 |
+| 学習しても「習得済み 0/195」のまま | ①FutureProviderのキャッシュがセッション後に更新されない ②`mastered`は21日間隔到達が条件のため数週間反映されない | ①`invalidateProgressProviders()`をセッション完了・途中離脱・カード評価時に呼ぶ ②進捗バーと数値を`studiedCount`（status != 'new'）ベースに変更し、mastered は補助表示に |
+| 「もう一度復習する」で「復習するカードはありません」 | ①上記キャッシュ ②「曖昧」評価でも`next_review`が翌日になり当日は対象0件 | `getPracticeCards()`を追加し、`/study?mode=practice`で**その日に学習したカード**を苦手順に出題（過去日の学習分は含めない） |
+| 週間サマリーの曜日が火曜始まりだった | 直近7日のローリング表示だった | 暦の週（日曜始まり・土曜終わり）に変更 |
+| 通知が設定時刻と全く違う時間に鳴る | `tz.initializeTimeZones()` だけで `tz.local` がUTCのまま。zonedScheduleがUTC基準で組まれJST(+9h)とずれる | `initialize()` で `tz.setLocalLocation(tz.getLocation('Asia/Tokyo'))` を設定（日本時間固定でリマインド） |
+| 裏面をスワイプしかけて戻すと表面に戻る | `SwipeCardWrapper` の Stack 先頭にスワイプ中だけ出るフィードバック背景があり、ドラッグ開始でカードのindexが0→1にずれてFlipCardのStateが破棄・再生成され、フリップが表面(controller=0)にリセットされる | Stack children に `ValueKey` を付与し、条件付きの子が出入りしてもFlipCardのStateを保持 |
+| 学習が設定枚数で終わらず最初に戻る | ①`StudySessionState.copyWith` の `currentCard: currentCard ?? this.currentCard` で完了時に `null` を渡しても無視され、最後のカードが残り再表示 ②完了処理の副作用が実機で失敗すると `context.go` 前で止まる | ①copyWithをセンチネル方式にして `null` 設定を可能に ②`_completeSession` を try/catchで囲み副作用が失敗しても必ず遷移、`_completing` で二重起動防止。`test/unit/study_session_test.dart` で完了ロジックを恒久ガード |
+| カード詳細で評価しても一覧の表示が変わらない | 一覧プロバイダーを再取得していなかった | `invalidateProgressProviders()` が**カード一覧系のfamilyプロバイダーも無効化**するようにした（引数なしinvalidateで全インスタンスが対象）。シートを開いたまま裏の一覧が更新される |
+| 途中でやめて再開すると新規カウントが 0/40 に戻る（減らない） | `getNewCards(limit)` は毎回上限まで新規を補充する。学習済みは status!='new' なので除外されるだけで、残り枠の概念が無かった | 「その日の残り新規枠 = 1日の上限 − 今日学習した新規（`daily_stats.new_cards`）」を `getNewCardsStudiedToday()` で算出し、`loadSession` と `dailySessionInfoProvider` の両方で適用。3枚やって再開すると 0/37 になる（＝1日の新規枠を消化する挙動） |
+| フルスクリーン画面の周囲が黒くなる | 背景グラデを body だけに敷いていたため AppBar・ステータスバー裏やコンテンツ下部が黒く残った | `AppBackground(child: Scaffold(...))` で Scaffold ごと包む形に変更（AppShell と同じ方式） |
+| ホームで新規枚数を±変更すると画面全体がちらつく | `dailySessionInfoProvider`（設定依存）の再計算中にローディング表示へ落ちていた | `sessionInfo.when(skipLoadingOnReload: true, ...)` で再取得中も前回値を表示 |
+
+---
+
+## コーディング上の注意事項
+
+- **`Color.withValues(alpha:)` は使わない** → Flutter 3.24では未定義。`withOpacity()` を使う
+- **`riverpod_generator` / `build_runner` は導入済みだがコード生成は使っていない**（手動プロバイダーで統一）
+- **`AppBar.actions` に幅が不定のWidgetを置かない**（LinearProgressIndicator など）
+- **カードのseed投入**: `seed_data.dart` が `seed_version` と JSON の `version` を比較して差分のみ投入する。バージョンを上げないと再投入されない。**JSONから削除したカードはDBからも自動削除される**（cards.jsonが唯一の正）
+- **`AppConstants.appVersion` は `pubspec.yaml` の version と手動同期**（設定画面フッターに表示）
+- **実行時のネットワーク通信を伴う機能の追加は要確認**（App Storeの「データ収集なし」申告が崩れるため）
+- **UI文言はハードコード禁止**: `core/i18n/app_strings.dart` に ja/en 両方を定義し、`stringsProvider` 経由で取得する
+- **Pro判定は `isProProvider` 経由のみ**（サブスク無効時は常にtrue）。無料/Proの線引きは `MonetizationConfig` だけで変更する
+- **権利は `setPro(true)` して終わりにしない**。解約・返金を反映するため `EntitlementNotifier.verify()` が起動時／フォアグラウンド復帰時に再検証する（間隔・猶予期間は `MonetizationConfig`）
+- **バックアップのフォーマットを変えたら `BackupService._formatVersion` を上げる**（上げないと古いアプリが新しいファイルを中途半端に読み込む）
+- **学習進捗を変更したら `invalidateProgressProviders(ref)` を呼ぶ**（`core/providers/progress_refresh.dart`）。ホーム・カテゴリのFutureProviderはキャッシュするため、これを忘れると古い集計が表示される
+- **カードの学習状況の表示は `Rating`（忘れた/曖昧/覚えてた、未評価はnull=未学習）で統一**。`CardStatus`（new/learning/review/mastered）はSRS内部状態であり画面には出さない
+- **「忘れた」の次回復習は当日中の短い再学習ステップ**（`relearnStepMinutes = 10`分後）。以前は `next_review = now`（即時）だったが、エビングハウス基準で数十分後に変更。ただし `intervalDays` は 0 のまま（＝graduated扱いしない）。セッション内の即時再出題は `retryCount` 側で別管理なので影響なし
+- **評価ボタンの次回間隔は必ず `SrsEngine.projectedInterval()` を使う**（表示と実際の `processReview` 結果が一致する。独自計算で二重管理しない）
+- **カード番号はカテゴリごとの通し番号**（`cards.card_number`）。シード時に cards.json の並び順で1から採番するため、**カードの順序を入れ替えると番号が変わる**（追加は末尾に）
+- **進捗表示は `studiedCount`（status != 'new'）を使う**。`mastered` は21日間隔到達が条件で数週間かかるため、これを主指標にすると「学習しても0のまま」になる
+- **カードに新フィールドを足すとき**: cards.json + `card_model.dart` + `seed_data.dart` + `database_helper.dart`（DBバージョン++とマイグレーション）の4点セット。翻訳が必要なら `dart_defines.json` の GEMINI_API_KEY で開発時に一括生成（実行時API呼び出しはしない）
+
+---
+
+## デザインシステム（"Terminal-grade" — 開発者ツール風）
+
+「平面的で奥行きがない」を解消するために全画面を刷新した。**色・影・角丸・テキストスタイルはすべて `core/theme/app_theme.dart`（`AppTheme`）に集約**されており、各画面は `AppTheme.*` を参照するだけ。ここを変えれば全画面に波及する。
+
+- **カラー**: インディゴ基調（`primary = #5B54E6`）。CTA は `primaryGradient`、背景は `backgroundGradient`（上から下へ僅かに沈む）
+- **奥行き**: `cardShadow`（インク色2層）/ `heroShadow`（学習カード用の強い primary 影）/ `buttonShadow`（primary グロー）。カードは `AppTheme.cardDecoration` を使う
+- **モノスペース識別子**: 数値・進捗率・タグは iOS 内蔵の等幅フォント `AppTheme.monoFont`（Menlo）。`monoNumber` / `monoNumberLarge` / `monoLabel` を使う。**`google_fonts` は使わない**（実行時ネットワーク取得になり「データ収集なし」申告と衝突する）
+- **共通部品**:
+  - `shared/widgets/gradient_button.dart` … 主要CTA（グラデ＋影＋ハプティクス）。ElevatedButton の代わりにこれを使う
+  - `shared/widgets/app_background.dart` … 背景グラデーション。**タブ画面は AppShell が包む**ので Scaffold を `backgroundColor: Colors.transparent` にするだけ。**フルスクリーン遷移（study / session-complete / history / category詳細 / search / paywall / onboarding）は `AppBackground(child: Scaffold(...))` の形で Scaffold 全体を包む**（body だけを包むと AppBar・ステータスバー裏やコンテンツ下部が黒く残る＝グラデが画面全体に届かない。必ず Scaffold ごと包み、Scaffold と AppBar は透明のまま）
+- **影のクリッピングに注意**: `borderRadius` を持つ `Material` は子をクリップするため、内側の `boxShadow` が消える。`DecoratedBox(cardDecoration) > Material(transparent, clipBehavior: antiAlias) > InkWell > Padding` の順で組む（`card_list_tile.dart` 参照）
+- **アイコンは `_rounded` 系で統一**（home_rounded, play_arrow_rounded など）
+
+---
+
+## アプリアイコン
+
+マスター画像は `assets/icon/app_icon.png`（2048×2048）。差し替えたら以下で再生成する:
+
+```bash
+dart run flutter_launcher_icons
+```
+
+iOS/Android の全サイズが生成される（iOSはアルファ除去＝審査対応）。設定は `pubspec.yaml` の `flutter_launcher_icons:` セクション。
+
+---
+
+## ビルド・申請
+
+詳細は `docs/build_and_release.md` を参照。
+
+- **iOS実機**: `flutter run --release`
+- **App Store**: `flutter build ipa` → Xcode でアップロード
+- **Android**: `flutter build appbundle`
+- **リリース前**: Bundle IDを `com.example.*` から変更すること
+
+---
+
+## Phase 2 以降の予定（着手しない）
+
+- AI解説機能（カード裏面「もっと詳しく」）
+- クラウド同期
+- シーン別ロールプレイ（Slack・面接）
+- ダークモード
+- 学習分析ダッシュボード
