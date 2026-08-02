@@ -128,6 +128,8 @@ class AppStrings {
   final String rangeMatchCount;
   final String rangeNoMatch;
   final String newCardsOnHome;
+  final String rangeMin;
+  final String rangeMax;
   final String newCardsMaxLabel;
 
   // 学習履歴カレンダー
@@ -252,6 +254,8 @@ class AppStrings {
     required this.rangeMatchCount,
     required this.rangeNoMatch,
     required this.newCardsOnHome,
+    required this.rangeMin,
+    required this.rangeMax,
     required this.newCardsMaxLabel,
     required this.historyTitle,
     required this.historyStudied,
@@ -517,6 +521,8 @@ class AppStrings {
     rangeMatchCount: '枚が対象',
     rangeNoMatch: '条件に一致するカードがありません',
     newCardsOnHome: '1日の新規カード数',
+    rangeMin: '最小',
+    rangeMax: '最大',
     newCardsMaxLabel: '最大',
     historyTitle: '学習カレンダー',
     historyStudied: '学習した日',
@@ -638,6 +644,8 @@ class AppStrings {
     rangeMatchCount: 'cards match',
     rangeNoMatch: 'No cards match these settings',
     newCardsOnHome: 'New cards per day',
+    rangeMin: 'Min',
+    rangeMax: 'Max',
     newCardsMaxLabel: 'Max',
     historyTitle: 'Study Calendar',
     historyStudied: 'Studied',

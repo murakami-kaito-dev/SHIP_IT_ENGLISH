@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
@@ -192,34 +193,17 @@ class _RangeStudySheetState extends ConsumerState<_RangeStudySheet> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 範囲
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _label(strings.rangeSelectRange),
-                      Text(
-                        '#${_range.start.round()} 〜 #${_range.end.round()}',
-                        style: AppTheme.bodyText.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.primary,
-                        ),
-                      ),
-                    ],
+                  // 範囲（最小〜最大を直接指定。ツマミの微調整をやめた）
+                  _label(strings.rangeSelectRange),
+                  const SizedBox(height: 10),
+                  _RangeMinMaxSelector(
+                    start: _range.start.round(),
+                    end: _range.end.round(),
+                    maxNumber: _maxNumber,
+                    strings: strings,
+                    onChanged: (v) => setState(() => _range = v),
                   ),
-                  if (_maxNumber > 1)
-                    RangeSlider(
-                      values: _range,
-                      min: 1,
-                      max: _maxNumber.toDouble(),
-                      divisions: _maxNumber - 1,
-                      activeColor: AppTheme.primary,
-                      labels: RangeLabels(
-                        '${_range.start.round()}',
-                        '${_range.end.round()}',
-                      ),
-                      onChanged: (v) => setState(() => _range = v),
-                    ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
                   // 出題順
                   _label(strings.rangeSelectOrder),
@@ -270,8 +254,15 @@ class _RangeStudySheetState extends ConsumerState<_RangeStudySheet> {
       );
 }
 
-/// 条件に一致する枚数を表示し、1枚以上あれば「学習」ボタンを有効にする
-class _StartSection extends ConsumerWidget {
+/// 条件に一致する枚数を表示し、1枚以上あれば「学習」ボタンを有効にする。
+///
+/// 範囲を変えるたびに件数プロバイダー（config をキーにした family）が
+/// 再取得され、ローディング中は値が null になる。素直に描くと件数テキストが
+/// 消えてボタンが上下に動く（UIがうざったい）。そこで
+/// - 件数行の高さを固定（テキストの有無で高さが変わらない）
+/// - 直前の件数を保持して再取得中も表示し続ける
+/// ことでレイアウトのガタつきをなくす。
+class _StartSection extends ConsumerStatefulWidget {
   final CategoryStudyConfig config;
   final AppStrings strings;
   final VoidCallback onStart;
@@ -283,30 +274,239 @@ class _StartSection extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final countAsync = ref.watch(categoryStudyCountProvider(config));
-    final count = countAsync.asData?.value;
+  ConsumerState<_StartSection> createState() => _StartSectionState();
+}
+
+class _StartSectionState extends ConsumerState<_StartSection> {
+  int? _lastCount;
+
+  @override
+  Widget build(BuildContext context) {
+    // 新しい件数が来たら保持する（再取得中も前回値を出し続けるため）
+    ref.listen(categoryStudyCountProvider(widget.config), (_, next) {
+      final v = next.asData?.value;
+      if (v != null && v != _lastCount) {
+        setState(() => _lastCount = v);
+      }
+    });
+    final count =
+        ref.watch(categoryStudyCountProvider(widget.config)).asData?.value ??
+            _lastCount;
+    final strings = widget.strings;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (count != null)
-          Text(
-            count > 0
-                ? '$count${strings.rangeMatchCount}'
-                : strings.rangeNoMatch,
-            style: AppTheme.captionText.copyWith(
-              color: count > 0 ? AppTheme.primary : AppTheme.ratingForgot,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+        // 高さを固定して、件数の有無・変化でボタンが上下に動かないようにする
+        SizedBox(
+          height: 20,
+          child: count == null
+              ? null
+              : Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    count > 0
+                        ? '$count${strings.rangeMatchCount}'
+                        : strings.rangeNoMatch,
+                    style: AppTheme.captionText.copyWith(
+                      color:
+                          count > 0 ? AppTheme.primary : AppTheme.ratingForgot,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+        ),
         const SizedBox(height: 12),
         ElevatedButton.icon(
-          onPressed: (count ?? 0) > 0 ? onStart : null,
+          onPressed: (count ?? 0) > 0 ? widget.onStart : null,
           icon: const Icon(Icons.play_arrow),
           label: Text(strings.rangeStart),
         ),
       ],
+    );
+  }
+}
+
+/// 番号範囲を「最小」「最大」それぞれのステッパー（− 直接入力 ＋）で指定する。
+/// 横のツマミ（RangeSlider）の微調整をやめ、端点を直接指定できるようにした。
+/// 最小は最大を超えず、最大は総数[maxNumber]を超えない（相互にクランプ）。
+class _RangeMinMaxSelector extends StatefulWidget {
+  final int start;
+  final int end;
+  final int maxNumber;
+  final AppStrings strings;
+  final ValueChanged<RangeValues> onChanged;
+
+  const _RangeMinMaxSelector({
+    required this.start,
+    required this.end,
+    required this.maxNumber,
+    required this.strings,
+    required this.onChanged,
+  });
+
+  @override
+  State<_RangeMinMaxSelector> createState() => _RangeMinMaxSelectorState();
+}
+
+class _RangeMinMaxSelectorState extends State<_RangeMinMaxSelector> {
+  late final TextEditingController _minCtrl =
+      TextEditingController(text: '${widget.start}');
+  late final TextEditingController _maxCtrl =
+      TextEditingController(text: '${widget.end}');
+  final _minFocus = FocusNode();
+  final _maxFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // フォーカスを外したら、実際に採用された値へテキストを揃える（範囲外入力の是正）
+    _minFocus.addListener(() {
+      if (!_minFocus.hasFocus) _minCtrl.text = '${widget.start}';
+    });
+    _maxFocus.addListener(() {
+      if (!_maxFocus.hasFocus) _maxCtrl.text = '${widget.end}';
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _RangeMinMaxSelector old) {
+    super.didUpdateWidget(old);
+    // 外部要因（カテゴリ変更・±・相互クランプ）で値が変わったら反映。
+    // 入力中（フォーカス時）はカーソルを保つため触らない。
+    if (!_minFocus.hasFocus && widget.start != old.start) {
+      _minCtrl.text = '${widget.start}';
+    }
+    if (!_maxFocus.hasFocus && widget.end != old.end) {
+      _maxCtrl.text = '${widget.end}';
+    }
+  }
+
+  @override
+  void dispose() {
+    _minCtrl.dispose();
+    _maxCtrl.dispose();
+    _minFocus.dispose();
+    _maxFocus.dispose();
+    super.dispose();
+  }
+
+  void _setMin(int v) =>
+      widget.onChanged(RangeValues(v.clamp(1, widget.end).toDouble(),
+          widget.end.toDouble()));
+  void _setMax(int v) => widget.onChanged(RangeValues(widget.start.toDouble(),
+      v.clamp(widget.start, widget.maxNumber).toDouble()));
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.strings;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: _stepper(
+            label: s.rangeMin,
+            controller: _minCtrl,
+            focus: _minFocus,
+            onMinus: widget.start > 1 ? () => _setMin(widget.start - 1) : null,
+            onPlus:
+                widget.start < widget.end ? () => _setMin(widget.start + 1) : null,
+            onChanged: (t) {
+              final n = int.tryParse(t.trim());
+              if (n != null) _setMin(n);
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Text('〜',
+              style: AppTheme.bodyText.copyWith(color: AppTheme.textTertiary)),
+        ),
+        Expanded(
+          child: _stepper(
+            label: s.rangeMax,
+            controller: _maxCtrl,
+            focus: _maxFocus,
+            onMinus:
+                widget.end > widget.start ? () => _setMax(widget.end - 1) : null,
+            onPlus: widget.end < widget.maxNumber
+                ? () => _setMax(widget.end + 1)
+                : null,
+            onChanged: (t) {
+              final n = int.tryParse(t.trim());
+              if (n != null) _setMax(n);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _stepper({
+    required String label,
+    required TextEditingController controller,
+    required FocusNode focus,
+    required VoidCallback? onMinus,
+    required VoidCallback? onPlus,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('$label #',
+            style: AppTheme.captionText.copyWith(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            _StepButton(icon: Icons.remove_rounded, onTap: onMinus),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                focusNode: focus,
+                textAlign: TextAlign.center,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: AppTheme.monoNumber.copyWith(color: AppTheme.primary),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: onChanged,
+                onTapOutside: (_) => focus.unfocus(),
+              ),
+            ),
+            _StepButton(icon: Icons.add_rounded, onTap: onPlus),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// ステッパーの ± 丸ボタン（無効時はグレーで押せない）。
+class _StepButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  const _StepButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Material(
+      color: enabled ? AppTheme.primaryLight : AppTheme.surfaceBorder,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon,
+              size: 20,
+              color: enabled ? AppTheme.primary : AppTheme.textTertiary),
+        ),
+      ),
     );
   }
 }
