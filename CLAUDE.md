@@ -8,15 +8,18 @@ Claude Code がこのプロジェクトを触る際に必ず参照するコン�
 
 - **アプリ名**: ShipIt English
 - **目的**: 海外テック企業で働くための技術英語を、毎日5〜10分のSRS学習で習得するFlutterアプリ
-- **仕様書**: `docs/shipit_english_spec_v4.md`（詳細仕様はすべてここに記載）
+- **仕様（正）**: `.claude/spec/`（画面別・システム別の最新仕様。索引は `.claude/spec/README.md`）。`docs/shipit_english_spec_v4.md` は初期の詳細要件（参考・履歴）
 - **現フェーズ**: Phase 1 MVP 完成済み・実機動作確認済み・App Store申請準備中
 
 ### 関連ドキュメント
 
+> **画面・システムの仕様は `.claude/spec/` が「正」**（仕様駆動開発）。コードを読む前に
+> まず該当 spec を1〜2ファイル読む。**実装を変えたら対応する spec を必ず更新する**。
+> 索引は `.claude/spec/README.md`。`docs/` は人間向けの操作手順（下記）。
+
 | ドキュメント | 用途 |
 |-------------|------|
-| `docs/technical_overview.md` | 新規参画エンジニア向けの技術全体像 |
-| `docs/ai_context.md` | AIアシスタント向け実装コンテキスト（**実装を変えたら更新**） |
+| `.claude/spec/` | **画面別・システム別の仕様（コードを読む前にここ）** |
 | `docs/app_store_connect_submission.md` | App Store Connect 申請の全手順・全入力値 |
 | `docs/subscription_setup_guide.md` | サブスク（ShipIt Pro）の有効化手順・App Store Connect操作・Sandboxテスト |
 | `docs/backup_and_restore.md` | 学習データのバックアップ/復元の仕様と操作手順 |
