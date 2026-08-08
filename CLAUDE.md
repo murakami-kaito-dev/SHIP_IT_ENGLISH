@@ -23,6 +23,7 @@ Claude Code がこのプロジェクトを触る際に必ず参照するコン�
 | `docs/feature_recommendations.md` | 追加機能の優先度リスト |
 | `docs/build_and_release.md` | ビルド・署名・ストア申請の操作手順 |
 | `docs/app_store_free_release_checklist.md` | 課金なし配布の対応済み項目＋開発者の手作業チェックリスト |
+| `docs/tts_audio_generation.md` | 発音音声（Amazon Polly）の生成手順・AWSセットアップ・差分生成コマンド |
 
 ---
 
@@ -225,6 +226,7 @@ test/
 - **カード番号はカテゴリごとの通し番号**（`cards.card_number`）。シード時に cards.json の並び順で1から採番するため、**カードの順序を入れ替えると番号が変わる**（追加は末尾に）
 - **進捗表示は `studiedCount`（status != 'new'）を使う**。`mastered` は21日間隔到達が条件で数週間かかるため、これを主指標にすると「学習しても0のまま」になる
 - **カードに新フィールドを足すとき**: cards.json + `card_model.dart` + `seed_data.dart` + `database_helper.dart`（DBバージョン++とマイグレーション）の4点セット。翻訳が必要なら `dart_defines.json` の GEMINI_API_KEY で開発時に一括生成（実行時API呼び出しはしない）
+- **発音音声は「開発時に Amazon Polly で一括生成→同梱、実行時は再生のみ（非通信）」**。`speakTarget` は jaモード（英語）で同梱クリップがあれば `AudioClipService` で再生、無ければ `flutter_tts` にフォールバック。生成は `dart run tools/generate_tts.dart --generate`（差分生成・要 AWS CLI）。ファイル名は `sha1(trimしたテキスト)`.mp3 で生成側/実行側が一致。カード追加時は音声も差分生成してコミット（手順は `docs/tts_audio_generation.md`）
 
 ---
 

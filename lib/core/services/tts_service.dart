@@ -3,9 +3,12 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
+import 'package:ship_it_english/core/services/audio_clip_service.dart';
 
-/// 端末内蔵の音声合成でカードのフレーズ・例文を読み上げる。
-/// ネットワークは使用しない（オフライン・プライバシー申告に影響なし）。
+/// カードのフレーズ・例文を読み上げる。
+/// - 事前生成した高品質音声（Amazon Polly Neural）が同梱されていればそれを再生
+/// - 無ければ端末内蔵の音声合成（flutter_tts）にフォールバック
+/// いずれもネットワークは使用しない（オフライン・プライバシー申告に影響なし）。
 class TtsService {
   static final TtsService _instance = TtsService._();
   factory TtsService() => _instance;
@@ -45,6 +48,14 @@ class TtsService {
   Future<void> speakTarget(String text, LanguageMode mode) async {
     if (text.trim().isEmpty) return;
 
+    // jaモードの読み上げ対象は英語。事前生成した高品質音声があればそれを再生し、
+    // 端末TTSは鳴らさない（二重再生を防ぐため先に端末TTSを止める）。
+    if (mode == LanguageMode.ja) {
+      await _tts.stop();
+      final played = await AudioClipService().playIfAvailable(text);
+      if (played) return;
+    }
+
     try {
       await _ensureInitialized();
 
@@ -64,6 +75,7 @@ class TtsService {
 
   Future<void> stop() async {
     try {
+      await AudioClipService().stop();
       await _tts.stop();
     } catch (e) {
       debugPrint('[TtsService] stop failed: $e');

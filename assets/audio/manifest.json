@@ -1,0 +1,8 @@
+{
+  "audioVersion": 1,
+  "engine": "neural",
+  "provider": "amazon-polly",
+  "locale": "en-US",
+  "voice": "Joanna",
+  "keys": []
+}

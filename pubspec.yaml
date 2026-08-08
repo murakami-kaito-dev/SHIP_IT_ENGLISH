@@ -28,6 +28,10 @@ dependencies:
   share_plus: ^12.0.2
   file_picker: ^11.0.2
   path_provider: ^2.1.5
+  # 事前生成した発音音声（Amazon Polly Neural）を実行時にオフライン再生する。
+  audioplayers: ^6.1.0
+  # 読み上げテキスト→音声ファイル名(sha1)の対応づけ。生成時・実行時で共通に使う。
+  crypto: ^3.0.3
 
 dev_dependencies:
   flutter_test:
@@ -42,6 +46,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/data/cards.json
+    # 事前生成した発音音声（tools/generate_tts.dart が出力）。
+    - assets/audio/manifest.json
+    - assets/audio/en-US/
 
 # アプリアイコン生成設定。マスター画像は assets/icon/app_icon.png（2048x2048）。
 # 変更したら `dart run flutter_launcher_icons` を実行して各サイズを再生成する。
