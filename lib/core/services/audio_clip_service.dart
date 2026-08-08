@@ -74,7 +74,7 @@ class AudioClipService {
     if (!_keys.contains(key)) return false;
     try {
       await _player.stop();
-      await _player.play(AssetSource('$_clipDir/$key.mp3'));
+      await _player.play(AssetSource('$_clipDir/$key.m4a'));
       return true;
     } catch (e) {
       debugPrint('[AudioClipService] play failed: $e');

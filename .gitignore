@@ -70,3 +70,6 @@ local.properties
 dart_defines.json
 *.env
 .env
+
+# TTS 声の聴き比べ用スクラッチ
+tools/tts_poc/
