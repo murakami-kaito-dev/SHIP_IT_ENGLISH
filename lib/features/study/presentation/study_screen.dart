@@ -8,7 +8,16 @@ import 'package:ship_it_english/core/monetization/monetization_config.dart';
 import 'package:ship_it_english/core/providers/core_providers.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/providers/progress_refresh.dart';
+import 'package:ship_it_english/core/services/sound_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
+import 'package:ship_it_english/features/gamification/domain/gamification.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/combo_overlay.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/fever_frame.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/level_up_modal.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/sparkle_burst.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/xp_gain_popup.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
+import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
 import 'package:ship_it_english/features/study/domain/models/study_session.dart';
 import 'package:ship_it_english/features/study/presentation/widgets/flip_card.dart';
 import 'package:ship_it_english/features/study/presentation/widgets/rating_buttons.dart';
@@ -53,6 +62,14 @@ class StudyScreen extends ConsumerStatefulWidget {
 class _StudyScreenState extends ConsumerState<StudyScreen> {
   bool _loaded = false;
 
+  // === ゲーミフィケーション演出用の一時状態 ===
+  /// 直近の評価結果（コンボ数・獲得XP・FEVER・レベルアップ判定）。
+  AnswerOutcome? _lastOutcome;
+
+  /// エフェクト（XP+ポップ・スパークル）を作り直すためのキー。
+  /// 評価のたびに +1 して XpGainPopup / SparkleBurst を再生する。
+  int _effectTick = 0;
+
   @override
   void initState() {
     super.initState();
@@ -85,6 +102,8 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
           allowedNewCategories: allowed,
         );
       }
+      // 新しいセッションの開始時はコンボ・セッションXPをリセットする
+      ref.read(gamificationProvider.notifier).startSession();
       if (mounted) setState(() => _loaded = true);
     });
   }
@@ -96,10 +115,55 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
 
   Future<void> _handleRating(Rating rating) async {
     final notifier = ref.read(studySessionProvider.notifier);
+
+    // 「1回で正解」か（＝コンボ対象）を評価前に判定する。
+    // rateCard 内では再出題カードの retryCount が >0 になっている。
+    final before = ref.read(studySessionProvider);
+    final cardId = before.currentCard?.id;
+    final firstTry = cardId == null || (before.retryCount[cardId] ?? 0) == 0;
+
     await notifier.rateCard(rating);
+
+    // XP/コンボ/FEVER を反映して演出を発火
+    final outcome = await ref
+        .read(gamificationProvider.notifier)
+        .registerAnswer(rating: rating, firstTry: firstTry);
+    _fireEffects(outcome);
+
+    // レベルアップしたらモーダルで祝う（閉じるまで待ってから完了処理へ）
+    if (outcome.leveledUp && mounted) {
+      final strings = ref.read(stringsProvider);
+      await showLevelUpModal(
+        context,
+        newLevel: outcome.newLevel,
+        title: strings.levelUpTitle,
+        levelLabel: strings.levelWord,
+        continueLabel: strings.continueButton,
+      );
+    }
 
     if (ref.read(studySessionProvider).phase == StudyPhase.completed) {
       await _completeSession();
+    }
+  }
+
+  /// 評価結果に応じて音・振動・オーバーレイを発火する。
+  void _fireEffects(AnswerOutcome outcome) {
+    final sound = SoundService.instance;
+    if (outcome.rating == Rating.forgot) {
+      sound.retry(); // 暗い音は出さない（負の感情の軽減）
+    } else if (outcome.fever) {
+      sound.fever();
+    } else if (outcome.combo >= 2) {
+      sound.combo(outcome.combo);
+    } else {
+      sound.correct();
+    }
+    if (mounted) {
+      setState(() {
+        _lastOutcome = outcome;
+        _effectTick++;
+      });
     }
   }
 
@@ -253,8 +317,15 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
         ),
         body: state.currentCard == null
             ? const SizedBox.shrink()
-            : Column(
+            : Stack(
                 children: [
+                  Column(
+                children: [
+                  // XPゲージ（レベル＋経験値。FEVER中は発光）
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 2),
+                    child: XPProgressBar(fever: _lastOutcome?.fever ?? false),
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -270,16 +341,67 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                   Expanded(
                     child: Padding(
                       padding: AppTheme.screenPadding,
-                      child: SwipeCardWrapper(
-                        isFlipped: state.isFlipped,
-                        onSwipe: _handleRating,
-                        child: FlipCard(
-                          card: state.currentCard!,
-                          isFlipped: state.isFlipped,
-                          mode: mode,
-                          onFlip: () =>
-                              ref.read(studySessionProvider.notifier).flipCard(),
-                        ),
+                      child: Stack(
+                        children: [
+                          SwipeCardWrapper(
+                            isFlipped: state.isFlipped,
+                            onSwipe: _handleRating,
+                            child: FlipCard(
+                              card: state.currentCard!,
+                              isFlipped: state.isFlipped,
+                              mode: mode,
+                              onFlip: () => ref
+                                  .read(studySessionProvider.notifier)
+                                  .flipCard(),
+                            ),
+                          ),
+                          // 正解時のスパークル（カード中心から弾ける）
+                          if (_lastOutcome?.isCorrect ?? false)
+                            Positioned.fill(
+                              key: ValueKey('spark$_effectTick'),
+                              child: SparkleBurst(
+                                color: _lastOutcome!.fever
+                                    ? AppTheme.streakFire
+                                    : AppTheme.ratingRemembered,
+                                count:
+                                    (8 + _lastOutcome!.combo * 2).clamp(8, 26),
+                              ),
+                            ),
+                          // COMBO 表示（中央上）
+                          Positioned(
+                            top: 20,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: ComboOverlay(
+                                  combo: _lastOutcome?.combo ?? 0),
+                            ),
+                          ),
+                          // XP獲得ポップ／どんまい（中央）
+                          Positioned(
+                            top: 96,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (_lastOutcome != null)
+                                    XpGainPopup(
+                                      key: ValueKey('xp$_effectTick'),
+                                      amount: _lastOutcome!.xpGained,
+                                      fever: _lastOutcome!.fever,
+                                    ),
+                                  if (_lastOutcome?.rating == Rating.forgot)
+                                    _KeepGoingChip(
+                                      key: ValueKey('kg$_effectTick'),
+                                      text: strings.keepGoing,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -316,7 +438,73 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                     ),
                   ),
                 ],
+                  ),
+                  // FEVER中は画面枠がパルス発光する
+                  Positioned.fill(
+                    child: FeverFrame(
+                        active: _lastOutcome?.fever ?? false),
+                  ),
+                ],
               ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 「どんまい！」の前向きなナッジ（不正解時）。elasticOut でポップして
+/// 数百ミリ秒後にフェードアウトする。暗い印象を与えない（SKILL: 負の感情の軽減）。
+class _KeepGoingChip extends StatefulWidget {
+  final String text;
+  const _KeepGoingChip({super.key, required this.text});
+
+  @override
+  State<_KeepGoingChip> createState() => _KeepGoingChipState();
+}
+
+class _KeepGoingChipState extends State<_KeepGoingChip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..forward();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, child) {
+          final t = _c.value;
+          final scale = 0.7 + 0.3 * Curves.elasticOut.transform(t.clamp(0, 1));
+          final opacity =
+              t < 0.15 ? t / 0.15 : (t < 0.75 ? 1.0 : (1.0 - (t - 0.75) / 0.25));
+          return Opacity(
+            opacity: opacity.clamp(0.0, 1.0),
+            child: Transform.scale(scale: scale, child: child),
+          );
+        },
+        child: Container(
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+          decoration: BoxDecoration(
+            color: AppTheme.ratingUncertain.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.ratingUncertain, width: 1.4),
+          ),
+          child: Text(
+            '😉 ${widget.text}',
+            style: AppTheme.bodyText.copyWith(
+              color: AppTheme.ratingUncertain,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ),
       ),
     );

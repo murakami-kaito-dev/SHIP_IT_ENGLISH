@@ -181,6 +181,14 @@ test/
 - [x] カテゴリ学習の設定シート（学習状況フィルタ〈未学習/忘れた/曖昧/覚えてた・複数可〉＋番号範囲＋出題順〈番号順/ランダム〉。枚数指定なし＝一致する全カード。Homeの🎛アイコン／カテゴリ詳細の「このカテゴリを学習」から。`/study?category=<id>&from=<n>&to=<m>&statuses=<csv>&order=<asc|random>`）
 - [x] 新規カード数の設定はホームの「今日のセッション」内に配置（設定タブからは移動）。**上限はカード総数（≈1500）**。スライダーをやめ「− 直接入力 ＋」ステッパー＋プリセット（5/10/25/50/100/最大）に変更（`_NewCardsStepper` / `_NewCardsPresets`。上限は `overallProgressProvider.totalCount` で動的取得）
 - [x] iPhone専用化（`TARGETED_DEVICE_FAMILY = 1`。iPadスクリーンショット不要に）
+- [x] ゲーミフィケーション演出一式（`features/gamification/`。SKILL: gamification-us / animation-effects 準拠）
+  - **コンボ＆FEVER**: 連続で1回正解するとコンボ加算→`ComboOverlay`が elasticOut で弾む＋ネオングロー。5コンボで`FeverFrame`（画面枠パルス発光）＋獲得XP1.5倍
+  - **XP＆レベル**: 評価ごとにXP獲得（`XpGainPopup`が浮上）→`XPProgressBar`が easeOutQuart で滑らかに増加。レベルアップで`showLevelUpModal`（elasticOutで拡大バウンド＋`ConfettiCelebration`紙吹雪）
+  - **デイリーストリーク**: `StreakWidget`（🔥が breathing パルス。今日の目標`dailyGoalCards`達成で強発光＋チェック）をホーム＆完了画面に配置
+  - **正解演出**: `SparkleBurst`（CustomPainterの軽量パーティクル）。不正解は`_KeepGoingChip`「どんまい！」でポジティブ誘導（負の感情の軽減）
+  - **触覚/音**: `SoundService`（`core/services/`）が tap/correct/combo/fever/levelUp/celebrate/retry のフックを提供（現状ハプティクス＋SystemSound。実SFXは`_sfx()`差し替えで対応）
+  - **タップ物理**: `GradientButton`は押下で scale(0.95)→離すと elasticOut で弾む（`PressScale`も再利用部品として提供）
+  - パッケージは`confetti`のみ追加（純Dart・オフライン・軽量）。他はFlutter組み込み（AnimationController/CustomPainter/HapticFeedback/SystemSound）で実装
 - [x] 今日のセッションの新規表示を「残りX / 上限Y枚」に変更（1日の上限が同じ画面で分かる）＋今日学習した新規枚数の補足キャプション。ヘルプ「?」ボタンで各要素の意味を説明するボトムシート（`_showSessionHelp` / `AppStrings.sessionHelpEntries()`）
 - [x] 学習カレンダーの拡張: 日付タップでその日の学習枚数を表示（`_SelectedDayDetail`）＋今月/累計の「学習枚数」も表示（従来の学習日数に加えて。`studyDaysProvider` は日付→枚数のMapなのでリポジトリ変更不要）
 - [x] 評価ボタンに次回復習間隔を表示（「忘れた 10分」「覚えてた 1日」等）。カードをめくった時に現在のSRS状態を読み込み（`StudySessionState.currentProgress`）、`SrsEngine.projectedInterval()` で各評価の次回間隔を予測して表示。表示＝実挙動を保証（内部で `processReview` を呼ぶ副作用なし予測）。「忘れた」は当日中の短い再学習ステップ（`AppConstants.relearnStepMinutes = 10`分後）＝エビングハウスの忘却曲線基準。文言整形は `AppStrings.nextReviewIn(Duration)`（分/時間/日/週間/か月）
@@ -227,6 +235,10 @@ test/
 - **進捗表示は `studiedCount`（status != 'new'）を使う**。`mastered` は21日間隔到達が条件で数週間かかるため、これを主指標にすると「学習しても0のまま」になる
 - **カードに新フィールドを足すとき**: cards.json + `card_model.dart` + `seed_data.dart` + `database_helper.dart`（DBバージョン++とマイグレーション）の4点セット。翻訳が必要なら `dart_defines.json` の GEMINI_API_KEY で開発時に一括生成（実行時API呼び出しはしない）
 - **発音音声は「開発時に Amazon Polly で一括生成→同梱、実行時は再生のみ（非通信）」**。`speakTarget` は jaモード（英語）で同梱クリップがあれば `AudioClipService` で再生、無ければ `flutter_tts` にフォールバック。生成は `dart run tools/generate_tts.dart --generate`（差分生成・要 AWS CLI）。ファイル名は `sha1(trimしたテキスト)`.mp3 で生成側/実行側が一致。カード追加時は音声も差分生成してコミット（手順は `docs/tts_audio_generation.md`）
+- **ゲーミフィケーションのXP/コンボ判定は `gamificationProvider` に集約**。study_screen は `registerAnswer(rating, firstTry)` を呼んで返る `AnswerOutcome`（combo/xpGained/fever/leveledUp）でエフェクトを発火するだけ。XP量・コンボ閾値・FEVER倍率・デイリー目標は `GamificationConfig` の定数のみで調整する
+- **XP総量だけを永続化**（`keyTotalXp`）。レベルとレベル内進捗は `GamificationSnapshot.fromTotalXp()` で都度算出（別々に保存しない）。コンボ・セッションXPはセッション内の一時状態で永続化しない（`startSession()` でリセット）
+- **効果音/振動は必ず `SoundService` 経由**（直接 HapticFeedback を撒かない）。実SFXを足すときは `_sfx()` をローカルアセット再生に差し替える（ネットワーク非通信・データ収集なしの方針を維持）
+- **`dart_defines.json` は秘密（GEMINI_API_KEY）を含むため `.gitignore` 済み**。コミット/Pushに含めない
 
 ---
 

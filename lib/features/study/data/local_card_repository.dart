@@ -286,6 +286,20 @@ class LocalCardRepository implements CardRepository {
     }
   }
 
+  /// 今日学習したカードの総枚数（daily_stats.cards_studied）。
+  /// デイリー目標（ストリークの炎の強発光）判定に使う。
+  Future<int> getCardsStudiedToday(String todayStr) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'daily_stats',
+      columns: ['cards_studied'],
+      where: 'date = ?',
+      whereArgs: [todayStr],
+    );
+    if (rows.isEmpty) return 0;
+    return (rows.first['cards_studied'] as int?) ?? 0;
+  }
+
   /// 今日すでに学習した「新規カード」の枚数（daily_stats.new_cards）。
   /// 1日の新規カード枠を消化するために使う（途中でやめて再開しても、
   /// その日に入れた新規カードの分だけ残り枠が減る）。

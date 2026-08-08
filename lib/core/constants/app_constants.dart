@@ -52,6 +52,7 @@ class AppConstants {
   static const String keyOnboardingDone = 'onboarding_done';
   static const String keyReviewRequested = 'review_requested';
   static const String keyProEntitlement = 'pro_entitlement';
+  static const String keyTotalXp = 'gamification_total_xp';
 
   /// 権利の検証に最後に成功した時刻（ISO8601）。
   /// 猶予期間の判定に使う（オフラインで即失効させないため）

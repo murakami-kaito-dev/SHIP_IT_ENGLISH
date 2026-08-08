@@ -4,7 +4,14 @@ import 'package:go_router/go_router.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/providers/progress_refresh.dart';
 import 'package:ship_it_english/core/services/review_service.dart';
+import 'package:ship_it_english/core/services/sound_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
+import 'package:ship_it_english/features/gamification/domain/gamification.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/confetti_celebration.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/streak_widget.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
+import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
+import 'package:ship_it_english/features/home/providers/home_providers.dart';
 import 'package:ship_it_english/features/study/providers/study_providers.dart';
 import 'package:ship_it_english/shared/widgets/app_background.dart';
 import 'package:ship_it_english/shared/widgets/gradient_button.dart';
@@ -26,6 +33,9 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
       // これを忘れると「習得済み 0/195」「復習するカードはありません」の
       // 古い表示が残る
       invalidateProgressProviders(ref);
+
+      // セレブレーション（紙吹雪は画面側で自動発火・ここで音と振動）
+      SoundService.instance.celebrate();
 
       // 結果表示が落ち着いたタイミングでアプリ内レビューを依頼
       // （ストリーク3日以上・過去に未依頼の場合のみ表示される）
@@ -65,6 +75,14 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
             ? (result.correctCount / result.studiedCount * 100).round()
             : 0;
 
+    // 今日の目標達成でストリークの炎を強発光させる
+    final studiedToday = ref.watch(dailySessionInfoProvider).asData?.value
+            .cardsStudiedToday ??
+        0;
+    final goalAchieved = studiedToday >= GamificationConfig.dailyGoalCards;
+    // このセッションで獲得したXP
+    final sessionXp = ref.watch(gamificationProvider).sessionXp;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
@@ -76,7 +94,9 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
       child: AppBackground(
         child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: SafeArea(
+        body: Stack(
+          children: [
+            SafeArea(
           child: Padding(
             padding: AppTheme.screenPadding,
             child: Column(
@@ -84,20 +104,30 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
               children: [
                 // グラデーションの円に載せたチェックマーク（達成感）
                 Container(
-                  width: 88,
-                  height: 88,
+                  width: 76,
+                  height: 76,
                   decoration: BoxDecoration(
                     gradient: AppTheme.primaryGradient,
                     shape: BoxShape.circle,
                     boxShadow: AppTheme.buttonShadow,
                   ),
                   child: const Icon(Icons.check_rounded,
-                      color: Colors.white, size: 48),
+                      color: Colors.white, size: 42),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 Text(strings.sessionCompleteTitle,
                     style: AppTheme.headingLarge),
-                const SizedBox(height: 32),
+                const SizedBox(height: 20),
+                // デイリーストリーク（大・達成で炎が強発光＋チェック）
+                StreakWidget(
+                  count: result.streakCount,
+                  label: strings.streak(result.streakCount),
+                  goalAchieved: goalAchieved,
+                  achievedMessage:
+                      goalAchieved ? strings.streakGoalReached : null,
+                  large: true,
+                ),
+                const SizedBox(height: 24),
                 Container(
                   width: double.infinity,
                   decoration: AppTheme.cardDecoration,
@@ -118,12 +148,15 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
                         value: _formatDuration(result.duration),
                       ),
                       _StatRow(
-                        label: strings.statStreak,
-                        value: strings.streakDays(result.streakCount),
+                        label: strings.xpEarned,
+                        value: '+$sessionXp XP',
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                // レベル＆XPゲージ（獲得XPが反映された状態）
+                const XPProgressBar(),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -166,6 +199,10 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
               ],
             ),
           ),
+        ),
+            // セッション完了の紙吹雪（表示時に自動で発火）
+            const ConfettiCelebration(),
+          ],
         ),
         ),
       ),

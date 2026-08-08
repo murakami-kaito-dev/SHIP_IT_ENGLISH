@@ -15,7 +15,8 @@ import 'package:ship_it_english/features/settings/providers/settings_providers.d
 import 'package:ship_it_english/features/study/presentation/widgets/range_study_sheet.dart';
 import 'package:ship_it_english/shared/widgets/gradient_button.dart';
 import 'package:ship_it_english/shared/widgets/progress_bar.dart';
-import 'package:ship_it_english/shared/widgets/streak_badge.dart';
+import 'package:ship_it_english/features/gamification/domain/gamification.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/streak_widget.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -122,9 +123,12 @@ class HomeScreen extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            StreakBadge(
+            StreakWidget(
               count: info.streakCount,
-              strings: strings,
+              label: strings.streak(info.streakCount),
+              // 今日の目標カード数を達成したら炎が強発光＋チェック
+              goalAchieved:
+                  info.cardsStudiedToday >= GamificationConfig.dailyGoalCards,
               // タップで学習カレンダー（いつ学習したかの記録）を開く
               onTap: () => context.push('/history'),
             ),

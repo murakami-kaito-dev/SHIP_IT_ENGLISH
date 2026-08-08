@@ -23,6 +23,9 @@ class DailySessionInfo {
   final int streakCount;
   final bool hasStudiedToday;
 
+  /// 今日学習したカードの総枚数（デイリー目標判定・ストリーク強発光用）。
+  final int cardsStudiedToday;
+
   /// 「もう一度復習」で出題できる枚数
   /// （今日学習した未習得カード＋期限切れカード）
   final int practiceCardsCount;
@@ -36,6 +39,7 @@ class DailySessionInfo {
     required this.estimatedSeconds,
     required this.streakCount,
     required this.hasStudiedToday,
+    required this.cardsStudiedToday,
     required this.practiceCardsCount,
   });
 }
@@ -87,6 +91,8 @@ final dailySessionInfoProvider = FutureProvider<DailySessionInfo>((ref) async {
   final total = reviewCount + cappedNew;
   final streak = await StreakManager().getStreakCount();
   final hasStudied = await localRepo.hasStudiedToday(today.toDateString());
+  final studiedTodayCount =
+      await localRepo.getCardsStudiedToday(today.toDateString());
   final practiceCount = await localRepo.getPracticeCardsCount(
     todayStr: today.toDateString(),
     allowedCategories: isPro ? null : MonetizationConfig.freeCategoryIds,
@@ -101,6 +107,7 @@ final dailySessionInfoProvider = FutureProvider<DailySessionInfo>((ref) async {
     estimatedSeconds: total * 30,
     streakCount: streak,
     hasStudiedToday: hasStudied,
+    cardsStudiedToday: studiedTodayCount,
     practiceCardsCount: practiceCount,
   );
 });

@@ -32,6 +32,8 @@ dependencies:
   audioplayers: ^6.1.0
   # 読み上げテキスト→音声ファイル名(sha1)の対応づけ。生成時・実行時で共通に使う。
   crypto: ^3.0.3
+  # ゲーミフィケーション演出（紙吹雪）。純Dart・オフライン・軽量でネットワーク不使用。
+  confetti: ^0.8.0
 
 dev_dependencies:
   flutter_test:
