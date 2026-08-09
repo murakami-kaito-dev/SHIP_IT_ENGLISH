@@ -52,5 +52,12 @@
 	<array>
 		<string>audio</string>
 	</array>
+	<!--
+	  file_picker（学習データのバックアップ復元でファイル選択に使用）が写真ライブラリ
+	  APIを参照するため、実際には写真を使わなくても用途文字列が必須（ITMS-90683）。
+	  本アプリは写真の内容を収集・送信しない。
+	-->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>学習データのバックアップファイルを選択・読み込みする際に使用します。写真の内容を収集・送信することはありません。</string>
 </dict>
 </plist>

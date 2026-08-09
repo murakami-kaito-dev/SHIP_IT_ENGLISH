@@ -242,6 +242,7 @@ test/
 - **XP総量だけを永続化**（`keyTotalXp`）。レベルとレベル内進捗は `GamificationSnapshot.fromTotalXp()` で都度算出（別々に保存しない）。コンボ・セッションXPはセッション内の一時状態で永続化しない（`startSession()` でリセット）
 - **効果音/振動は必ず `SoundService` 経由**（直接 HapticFeedback を撒かない）。実SFXを足すときは `_sfx()` をローカルアセット再生に差し替える（ネットワーク非通信・データ収集なしの方針を維持）
 - **`dart_defines.json` は秘密（GEMINI_API_KEY）を含むため `.gitignore` 済み**。コミット/Pushに含めない
+- **`file_picker` を使うので `NSPhotoLibraryUsageDescription` が必須**（`ios/Runner/Info.plist`）。写真は実際には使わないが、file_pickerが写真ライブラリAPIを参照するため用途文字列が無いと **ITMS-90683 でアップロードが弾かれる**（実機に届く前の自動処理で失敗しメール通知）。写真は収集しない旨を文字列に明記済み。**data収集なし申告とは矛盾しない**（用途文字列＝端末機能の許可であり、App Privacyのデータ収集宣言とは別物）。
 - **iOSのバックグラウンド/ロック画面再生（Now Playing）は `mixWithOthers` を付けない**。付けると「他の音と混ざる控えめな再生」扱いになり**アプリがNow Playingの座を取れず、ロック画面に曲名・操作が出ない／リモート操作が効かない**。主役として鳴らす連続再生（耳学）は `playback`＋オプション無しの専用コンテキストを使う（発音ボタンの単発再生は `mixWithOthers` のままで可）。表示/操作は `NowPlayingService`＋`AppDelegate.swift`（`MPNowPlayingInfoCenter`/`MPRemoteCommandCenter`）。チャンネル設定は `super.application` の**後**（rootViewController確定後）。
 - **リスト並び替え（ReorderableList）＆スライダー（シークバー）のちらつき対策（ベストプラクティス）**:
   - **キーは安定・一意に**：`ReorderableListView`/`Sliver...` の各行は `ValueKey(不変のid)`（カード番号やインデックス等の可変値をkeyにしない）。`onReorder` はメインで**同期的に**state更新（重い永続化は後追い/バックグラウンド）。再生中要素は id で追従させる（本アプリの耳学キューが該当）。
