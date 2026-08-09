@@ -125,8 +125,9 @@ class AudioClipService {
         if (!wait.isCompleted) wait.complete();
       });
       await _player.play(AssetSource('audio/$locale/$key.m4a'), volume: 1.0);
-      // 再生開始後に速度指定（開始前だと無視される端末があるため）
-      if (rate != 1.0) await _player.setPlaybackRate(rate);
+      // 再生開始後に速度指定（開始前だと無視される端末がある）。
+      // 前クリップが1.5倍のまま等の持ち越しを避けるため、1.0でも必ず設定する。
+      await _player.setPlaybackRate(rate);
       await wait.future;
       return true;
     } catch (e) {
@@ -135,6 +136,13 @@ class AudioClipService {
     } finally {
       await sub?.cancel();
     }
+  }
+
+  /// 再生中のクリップの速度を**即時**変更する（耳学の速度スライダー用）。
+  Future<void> setPlaybackRate(double rate) async {
+    try {
+      await _player.setPlaybackRate(rate);
+    } catch (_) {}
   }
 
   Future<void> stop() async {

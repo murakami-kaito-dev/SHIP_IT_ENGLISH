@@ -111,7 +111,7 @@ class ListeningController extends StateNotifier<ListeningState> {
   void next() => _seek(state.index + 1, autoplay: state.isPlaying);
   void previous() => _seek(state.index - 1, autoplay: state.isPlaying);
 
-  /// キュー内の特定カードへ移動して再生する。
+  /// キュー内の特定カードへ移動して再生する（キュー行タップ／シークバー用）。
   void jumpTo(int index) => _seek(index, autoplay: true);
 
   void _seek(int target, {required bool autoplay}) {
@@ -127,7 +127,8 @@ class ListeningController extends StateNotifier<ListeningState> {
   void setSpeed(double speed) {
     state = state.copyWith(speed: speed);
     _persist();
-    // 現在の行はそのまま。次の行から新しい速度が反映される。
+    // 再生中のクリップにも即時反映（途中から速度が変わる）
+    unawaited(_tts.setPlaybackRate(speed));
   }
 
   void toggleRepeat() {

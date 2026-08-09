@@ -11,6 +11,9 @@ import 'package:ship_it_english/shared/widgets/card_number_label.dart';
 
 /// 耳学（リスニング）プレイヤー。指定条件のカードを1枚=4行の順で自動再生する。
 /// 学習（SRS評価）とは独立しており、ストリーク・XPには影響しない。
+///
+/// 画面は縦スクロール1枚：最初の画面いっぱいが再生画面で、**下にスクロールすると
+/// 続きとして「次に再生」キュー**が現れる（別画面ではなく画面の続き）。
 class ListeningScreen extends ConsumerStatefulWidget {
   final ListenConfig config;
   const ListeningScreen({super.key, required this.config});
@@ -21,6 +24,27 @@ class ListeningScreen extends ConsumerStatefulWidget {
 
 class _ListeningScreenState extends ConsumerState<ListeningScreen> {
   bool _loaded = false;
+  final _scrollController = ScrollController();
+  double _viewportH = 0;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// 下の「次に再生」キューへスクロールして見せる（ハンドルのタップ用）。
+  void _revealQueue() {
+    if (!_scrollController.hasClients) return;
+    final target = _viewportH > 0
+        ? _viewportH
+        : _scrollController.position.maxScrollExtent;
+    _scrollController.animateTo(
+      target.clamp(0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +70,6 @@ class _ListeningScreenState extends ConsumerState<ListeningScreen> {
                 child: Text(strings.rangeNoMatch, style: AppTheme.bodyText),
               );
             }
-            // 取得できたカードを一度だけコントローラーに渡して自動再生を開始
             if (!_loaded) {
               _loaded = true;
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -58,162 +81,294 @@ class _ListeningScreenState extends ConsumerState<ListeningScreen> {
             if (st.isEmpty) {
               return const Center(child: CircularProgressIndicator());
             }
-            return _buildPlayer(context, st, strings);
+            return _buildScroll(context, st, strings);
           },
         ),
       ),
     );
   }
 
-  Widget _buildPlayer(
+  Widget _buildScroll(
       BuildContext context, ListeningState st, AppStrings strings) {
     final controller = ref.read(listeningControllerProvider.notifier);
-    final card = st.current!;
-    final lines = speechLinesFor(card, st.mode);
 
-    // キューは常時表示せず、上スワイプ／ハンドルのタップで開く（再生画面が主役）
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onVerticalDragEnd: (d) {
-        if ((d.primaryVelocity ?? 0) < -250) _openQueue(context, strings);
-      },
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-        child: Column(
-          children: [
-            // 進捗
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  st.finished ? strings.listenFinished : strings.listenNowPlaying,
-                  style: AppTheme.captionText.copyWith(
-                    color: st.finished ? AppTheme.ratingRemembered : null,
-                    fontWeight: FontWeight.w700,
-                  ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _viewportH = constraints.maxHeight;
+        return CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            // 1枚目の画面いっぱい＝再生画面
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: _viewportH,
+                child: _PlayerBody(
+                  st: st,
+                  strings: strings,
+                  controller: controller,
+                  onRevealQueue: _revealQueue,
                 ),
-                Text(
-                  strings.listenProgress(st.index + 1, st.queue.length),
-                  style: AppTheme.monoLabel.copyWith(color: AppTheme.primary),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // 現在のカード（4行・再生中の行をハイライト）
-            Expanded(
-              child: SingleChildScrollView(
-                child: _NowCard(card: card, lines: lines, activeLine: st.line),
               ),
             ),
-            const SizedBox(height: 12),
-            // 速度・繰り返し
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _RepeatToggle(
-                  on: st.repeat,
-                  label: strings.listenRepeat,
-                  onTap: controller.toggleRepeat,
-                ),
-                _SpeedSelector(
-                  speed: st.speed,
-                  onSelect: controller.setSpeed,
-                ),
-              ],
+            // 続きとして下に「次に再生」キュー
+            SliverToBoxAdapter(child: _QueueHeader(st: st, strings: strings)),
+            SliverReorderableList(
+              itemCount: st.queue.length,
+              onReorder: controller.reorder,
+              itemBuilder: (context, i) =>
+                  _queueTile(context, st, controller, i),
             ),
-            const SizedBox(height: 10),
-            // 再生コントロール
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  iconSize: 34,
-                  color: AppTheme.textSecondary,
-                  icon: const Icon(Icons.skip_previous_rounded),
-                  onPressed: controller.previous,
-                ),
-                const SizedBox(width: 12),
-                _PlayButton(
-                  playing: st.isPlaying,
-                  finished: st.finished,
-                  onTap: () {
-                    if (st.finished) {
-                      controller.jumpTo(0);
-                    } else {
-                      controller.togglePlay();
-                    }
-                  },
-                ),
-                const SizedBox(width: 12),
-                IconButton(
-                  iconSize: 34,
-                  color: AppTheme.textSecondary,
-                  icon: const Icon(Icons.skip_next_rounded),
-                  onPressed: controller.next,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // 「次に再生」を開くハンドル（タップ or 上スワイプ）
-            _UpNextHandle(
-              label: strings.listenUpNext,
-              count: st.queue.length,
-              onTap: () => _openQueue(context, strings),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 
-  /// 「次に再生」キューをモーダルで開く（並べ替え可能）。
-  void _openQueue(BuildContext context, AppStrings strings) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Consumer(
-        builder: (ctx, ref2, __) {
-          final st = ref2.watch(listeningControllerProvider);
-          final controller = ref2.read(listeningControllerProvider.notifier);
-          return _QueueList(
-              state: st, strings: strings, controller: controller);
-        },
+  Widget _queueTile(BuildContext context, ListeningState st,
+      ListeningController controller, int i) {
+    final card = st.queue[i];
+    final isCurrent = i == st.index;
+    final title =
+        st.mode == LanguageMode.ja ? card.phrase : card.translation;
+    final subtitle =
+        st.mode == LanguageMode.ja ? card.translation : card.phrase;
+    return Material(
+      key: ValueKey(card.id),
+      color: Colors.transparent,
+      child: ListTile(
+        onTap: () => controller.jumpTo(i),
+        leading: isCurrent
+            ? const Icon(Icons.graphic_eq_rounded, color: AppTheme.primary)
+            : Text(
+                cardNumberShort(card),
+                style:
+                    AppTheme.monoLabel.copyWith(color: AppTheme.textTertiary),
+              ),
+        title: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTheme.bodyText.copyWith(
+            fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
+            color: isCurrent ? AppTheme.primary : AppTheme.textPrimary,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTheme.captionText,
+        ),
+        trailing: ReorderableDragStartListener(
+          index: i,
+          child: const Padding(
+            padding: EdgeInsets.all(6),
+            child:
+                Icon(Icons.drag_handle_rounded, color: AppTheme.textTertiary),
+          ),
+        ),
       ),
     );
   }
 }
 
-/// 「次に再生」を開くための下部ハンドル（︿ アイコン＋件数）。
-class _UpNextHandle extends StatelessWidget {
-  final String label;
-  final int count;
-  final VoidCallback onTap;
-  const _UpNextHandle(
-      {required this.label, required this.count, required this.onTap});
+/// 再生画面（1枚目の画面いっぱい）。
+class _PlayerBody extends StatelessWidget {
+  final ListeningState st;
+  final AppStrings strings;
+  final ListeningController controller;
+  final VoidCallback onRevealQueue;
+  const _PlayerBody({
+    required this.st,
+    required this.strings,
+    required this.controller,
+    required this.onRevealQueue,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.keyboard_arrow_up_rounded,
-                size: 22, color: AppTheme.textTertiary),
-            Text(
-              '$label ($count)',
-              style: AppTheme.captionText
-                  .copyWith(fontWeight: FontWeight.w600),
+    final card = st.current!;
+    final lines = speechLinesFor(card, st.mode);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                st.finished ? strings.listenFinished : strings.listenNowPlaying,
+                style: AppTheme.captionText.copyWith(
+                  color: st.finished ? AppTheme.ratingRemembered : null,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                strings.listenProgress(st.index + 1, st.queue.length),
+                style: AppTheme.monoLabel.copyWith(color: AppTheme.primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: SingleChildScrollView(
+              child: _NowCard(card: card, lines: lines, activeLine: st.line),
             ),
-          ],
+          ),
+          const SizedBox(height: 12),
+          // 全体シークバー（つまみをドラッグでその位置のカードから再生）
+          _SeekBar(
+            index: st.index,
+            total: st.queue.length,
+            onSeek: controller.jumpTo,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _RepeatToggle(
+                on: st.repeat,
+                label: strings.listenRepeat,
+                onTap: controller.toggleRepeat,
+              ),
+              _SpeedSelector(speed: st.speed, onSelect: controller.setSpeed),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                iconSize: 34,
+                color: AppTheme.textSecondary,
+                icon: const Icon(Icons.skip_previous_rounded),
+                onPressed: controller.previous,
+              ),
+              const SizedBox(width: 12),
+              _PlayButton(
+                playing: st.isPlaying,
+                finished: st.finished,
+                onTap: () {
+                  if (st.finished) {
+                    controller.jumpTo(0);
+                  } else {
+                    controller.togglePlay();
+                  }
+                },
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                iconSize: 34,
+                color: AppTheme.textSecondary,
+                icon: const Icon(Icons.skip_next_rounded),
+                onPressed: controller.next,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          // 下にスクロール（または タップ）で「次に再生」キューへ
+          _RevealHandle(
+            label: strings.listenUpNext,
+            count: st.queue.length,
+            onTap: onRevealQueue,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 全体の再生位置を表すシークバー。つまみをドラッグしてその位置のカードへ移動。
+class _SeekBar extends StatefulWidget {
+  final int index;
+  final int total;
+  final ValueChanged<int> onSeek;
+  const _SeekBar(
+      {required this.index, required this.total, required this.onSeek});
+
+  @override
+  State<_SeekBar> createState() => _SeekBarState();
+}
+
+class _SeekBarState extends State<_SeekBar> {
+  double? _drag; // ドラッグ中の一時値（離すまで再生位置は動かさない）
+
+  @override
+  Widget build(BuildContext context) {
+    final total = widget.total;
+    final maxV = (total - 1).toDouble();
+    final value =
+        (_drag ?? widget.index.toDouble()).clamp(0.0, maxV < 0 ? 0.0 : maxV);
+    final shown = value.round() + 1;
+
+    return Column(
+      children: [
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 4,
+            activeTrackColor: AppTheme.primary,
+            inactiveTrackColor: AppTheme.surfaceBorder,
+            thumbColor: AppTheme.primary,
+            overlayShape:
+                const RoundSliderOverlayShape(overlayRadius: 16),
+            thumbShape:
+                const RoundSliderThumbShape(enabledThumbRadius: 8),
+          ),
+          child: Slider(
+            value: value,
+            min: 0,
+            max: maxV <= 0 ? 1 : maxV,
+            divisions: total > 1 ? total - 1 : null,
+            onChanged: total > 1
+                ? (v) => setState(() => _drag = v)
+                : null,
+            onChangeEnd: (v) {
+              widget.onSeek(v.round());
+              setState(() => _drag = null);
+            },
+          ),
         ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('$shown', style: AppTheme.monoLabel),
+              Text('$total', style: AppTheme.monoLabel),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QueueHeader extends StatelessWidget {
+  final ListeningState st;
+  final AppStrings strings;
+  const _QueueHeader({required this.st, required this.strings});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppTheme.surfaceBorder)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: Row(
+        children: [
+          const Icon(Icons.queue_music_rounded,
+              size: 18, color: AppTheme.primary),
+          const SizedBox(width: 8),
+          Text(strings.listenUpNext, style: AppTheme.headingMedium),
+          const Spacer(),
+          Text(
+            strings.listenProgress(st.index + 1, st.queue.length),
+            style: AppTheme.captionText,
+          ),
+        ],
       ),
     );
   }
@@ -315,7 +470,8 @@ class _LineRow extends StatelessWidget {
             const SizedBox(width: 6),
             const Padding(
               padding: EdgeInsets.only(top: 2),
-              child: Icon(Icons.graphic_eq_rounded, size: 16, color: Colors.white),
+              child:
+                  Icon(Icons.graphic_eq_rounded, size: 16, color: Colors.white),
             ),
           ],
         ],
@@ -369,8 +525,8 @@ class _RepeatToggle extends StatelessWidget {
         decoration: BoxDecoration(
           color: on ? AppTheme.primaryLight : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: on ? AppTheme.primary : AppTheme.surfaceBorder),
+          border:
+              Border.all(color: on ? AppTheme.primary : AppTheme.surfaceBorder),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -437,106 +593,32 @@ class _SpeedSelector extends StatelessWidget {
   }
 }
 
-/// 「次に再生」キュー（モーダル表示）。右のハンドルをドラッグで並べ替える。
-class _QueueList extends StatelessWidget {
-  final ListeningState state;
-  final AppStrings strings;
-  final ListeningController controller;
-  const _QueueList(
-      {required this.state, required this.strings, required this.controller});
+/// 「次に再生」へスクロールを誘導する下部ハンドル（︾ ＋件数）。
+class _RevealHandle extends StatelessWidget {
+  final String label;
+  final int count;
+  final VoidCallback onTap;
+  const _RevealHandle(
+      {required this.label, required this.count, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.7,
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceBorder,
-              borderRadius: BorderRadius.circular(2),
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$label ($count)',
+              style: AppTheme.captionText.copyWith(fontWeight: FontWeight.w600),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
-            child: Row(
-              children: [
-                const Icon(Icons.queue_music_rounded,
-                    size: 18, color: AppTheme.primary),
-                const SizedBox(width: 8),
-                Text(strings.listenUpNext, style: AppTheme.headingMedium),
-                const Spacer(),
-                Text(
-                  strings.listenProgress(state.index + 1, state.queue.length),
-                  style: AppTheme.captionText,
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ReorderableListView.builder(
-              buildDefaultDragHandles: false,
-              padding: const EdgeInsets.only(bottom: 24),
-              itemCount: state.queue.length,
-              onReorder: controller.reorder,
-              itemBuilder: (context, i) {
-                final card = state.queue[i];
-                final isCurrent = i == state.index;
-                // jaモード=英語を主表示 / enモード=日本語を主表示
-                final title = state.mode == LanguageMode.ja
-                    ? card.phrase
-                    : card.translation;
-                final subtitle = state.mode == LanguageMode.ja
-                    ? card.translation
-                    : card.phrase;
-                return Material(
-                  key: ValueKey(card.id),
-                  color: Colors.transparent,
-                  child: ListTile(
-                    onTap: () => controller.jumpTo(i),
-                    leading: isCurrent
-                        ? const Icon(Icons.graphic_eq_rounded,
-                            color: AppTheme.primary)
-                        : Text(
-                            cardNumberShort(card),
-                            style: AppTheme.monoLabel
-                                .copyWith(color: AppTheme.textTertiary),
-                          ),
-                    title: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTheme.bodyText.copyWith(
-                        fontWeight:
-                            isCurrent ? FontWeight.w800 : FontWeight.w600,
-                        color: isCurrent
-                            ? AppTheme.primary
-                            : AppTheme.textPrimary,
-                      ),
-                    ),
-                    subtitle: Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTheme.captionText,
-                    ),
-                    trailing: ReorderableDragStartListener(
-                      index: i,
-                      child: const Padding(
-                        padding: EdgeInsets.all(6),
-                        child: Icon(Icons.drag_handle_rounded,
-                            color: AppTheme.textTertiary),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+            const Icon(Icons.keyboard_arrow_down_rounded,
+                size: 22, color: AppTheme.textTertiary),
+          ],
+        ),
       ),
     );
   }

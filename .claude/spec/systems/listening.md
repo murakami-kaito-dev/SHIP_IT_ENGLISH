@@ -20,13 +20,16 @@
 - 各行は `TtsService.speakAndWait(text, locale, rate)` で**再生完了を待って**次へ。行間0.4秒／カード間0.8秒（`_lineGap`/`_cardGap`）。
 - **繰り返しモード**（`repeat`）：OFF=最後で停止し `finished`（「再生完了」→もう一度）。ON=先頭へループ（音楽プレイヤー式）。
 - **速度**（`speed`・`kListenSpeeds`=0.75/1.0/1.25/1.5）。速度・繰り返しは prefs 永続化（`keyListenSpeed`/`keyListenRepeat`）。
+  - **速度変更は再生中のクリップにも即時反映**：`setSpeed` が `TtsService.setPlaybackRate`→`AudioClipService.setPlaybackRate`（`_player.setPlaybackRate`）を呼ぶ。`playAndWait` も毎回 `setPlaybackRate(rate)`（1.0でも）して前クリップの倍率持ち越しを防ぐ。
+- **シーク**：`jumpTo(index)` でその位置のカードから再生（キュー行タップ／全体シークバーのつまみ）。
 - 停止/一時停止/スキップ/並べ替えは `_runToken`（世代トークン）で進行中ループを無効化して制御。`dispose` で停止。
+- **バックグラウンド/画面ロック再生**：`ios/Runner/Info.plist` の `UIBackgroundModes=[audio]`＋`playback` カテゴリで、スリープ・アプリ切替中も再生継続。
 
 ## プレイヤーUI（[listening_screen.dart](../../../lib/features/listening/presentation/listening_screen.dart)）
 - `AppBackground(Scaffold(...))`（フルスクリーン遷移の作法）。
-- **常時は再生画面のみ**を表示（現在カード＝4行・再生中行ハイライト＋`graphic_eq`／進捗／⏮ 再生⏸ ⏭／繰り返しトグル／速度セレクタ）。
-- **「次に再生」キューはモーダル**：下部ハンドル `_UpNextHandle` のタップ、または**再生画面の上スワイプ**（`onVerticalDragEnd` velocity<-250）で `showModalBottomSheet` を開く（`_QueueList`・高さ0.7）。常時ピークさせない（以前の常時表示 `DraggableScrollableSheet` は廃止）。
-- キューは `ReorderableListView`＋右の `drag_handle`（`ReorderableDragStartListener`）でドラッグ並べ替え（`reorder`。再生中カードは追従）。行タップで `jumpTo`。
+- **画面全体が1枚の縦スクロール**（`CustomScrollView`）：先頭 sliver が**画面いっぱいの再生画面**（`SizedBox(height: viewportH)` の `_PlayerBody`）、その下に**続きとして「次に再生」キュー**（`_QueueHeader`＋`SliverReorderableList`）。**別画面/モーダルではなく画面の続き**として下へスクロールすると現れる（下端の狭いスワイプに依存しない＝iPhoneのホーム操作と競合しない）。
+- 再生画面：進捗／現在カード（4行・再生中行ハイライト＋`graphic_eq`）／**全体シークバー `_SeekBar`**（つまみドラッグ→離した位置のカードへ `jumpTo`）／繰り返しトグル・速度セレクタ／⏮ 再生⏸ ⏭／下スクロール誘導ハンドル `_RevealHandle`（タップで `animateTo(viewportH)`）。
+- キュー：`SliverReorderableList`＋右の `drag_handle`（`ReorderableDragStartListener`）でドラッグ並べ替え（`reorder`。再生中カードは追従）。行タップで `jumpTo`。
 
 ## 音声基盤の変更（[tts-audio.md](tts-audio.md) と共通）
 - `TtsService.speakLocale(text, locale)`：ロケール明示の単発再生（カード詳細の両言語スピーカー＝依頼1-2で使用）。`speakTarget` はこれの薄いラッパに。

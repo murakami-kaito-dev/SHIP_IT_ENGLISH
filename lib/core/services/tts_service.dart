@@ -102,6 +102,12 @@ class TtsService {
     }
   }
 
+  /// 再生中の同梱クリップの速度を即時変更する（耳学の速度スライダー用）。
+  /// 端末TTSは発話中の速度変更に非対応（次の発話から反映）。
+  Future<void> setPlaybackRate(double rate) async {
+    await AudioClipService().setPlaybackRate(rate);
+  }
+
   Future<void> stop() async {
     try {
       await AudioClipService().stop();
