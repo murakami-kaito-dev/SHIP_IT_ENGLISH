@@ -130,16 +130,19 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
     required int maxNewCards,
     String? categoryId,
     Set<String>? allowedNewCategories,
+    StudyScope scope = StudyScope.both,
   }) async {
     final today = DateTime.now();
-    final reviewCards =
-        await _repo.getCardsForReview(today, categoryId: categoryId);
+    // 学習範囲: reviewOnly は新規を、newOnly は復習を除外する（SRSの予定日は不変）。
+    final reviewCards = scope == StudyScope.newOnly
+        ? <TechCard>[]
+        : await _repo.getCardsForReview(today, categoryId: categoryId);
 
     // その日の新規カード枠は「1日の上限 − 今日すでに学習した新規」。
     // 途中でやめて再開しても、消化した分だけ残り枠が減る（0/40 に戻らない）。
-    var remainingNew = maxNewCards;
+    var remainingNew = scope == StudyScope.reviewOnly ? 0 : maxNewCards;
     final repo = _repo;
-    if (repo is LocalCardRepository) {
+    if (scope != StudyScope.reviewOnly && repo is LocalCardRepository) {
       final studiedNewToday =
           await repo.getNewCardsStudiedToday(today.toDateString());
       remainingNew = (maxNewCards - studiedNewToday).clamp(0, maxNewCards);

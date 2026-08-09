@@ -3,17 +3,35 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ship_it_english/core/constants/app_constants.dart';
 import 'package:ship_it_english/core/services/notification_service.dart';
 
+/// 今日のセッションで学習する範囲。
+/// - [newOnly]    新規カードのみ
+/// - [reviewOnly] 復習（期限が来たカード）のみ
+/// - [both]       新規＋復習（既定）
+enum StudyScope {
+  newOnly('new'),
+  reviewOnly('review'),
+  both('both');
+
+  final String value;
+  const StudyScope(this.value);
+
+  static StudyScope fromString(String? v) =>
+      StudyScope.values.firstWhere((s) => s.value == v, orElse: () => StudyScope.both);
+}
+
 class SettingsState {
   final int newCardsPerDay;
   final bool reminderEnabled;
   final int reminderHour;
   final int reminderMinute;
+  final StudyScope studyScope;
 
   const SettingsState({
     required this.newCardsPerDay,
     required this.reminderEnabled,
     required this.reminderHour,
     required this.reminderMinute,
+    required this.studyScope,
   });
 
   SettingsState copyWith({
@@ -21,12 +39,14 @@ class SettingsState {
     bool? reminderEnabled,
     int? reminderHour,
     int? reminderMinute,
+    StudyScope? studyScope,
   }) {
     return SettingsState(
       newCardsPerDay: newCardsPerDay ?? this.newCardsPerDay,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
       reminderHour: reminderHour ?? this.reminderHour,
       reminderMinute: reminderMinute ?? this.reminderMinute,
+      studyScope: studyScope ?? this.studyScope,
     );
   }
 }
@@ -39,6 +59,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
           reminderEnabled: true,
           reminderHour: AppConstants.defaultReminderHour,
           reminderMinute: AppConstants.defaultReminderMinute,
+          studyScope: StudyScope.both,
         ),
       ) {
     _load();
@@ -58,7 +79,15 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       reminderMinute:
           prefs.getInt(AppConstants.keyReminderMinute) ??
           AppConstants.defaultReminderMinute,
+      studyScope:
+          StudyScope.fromString(prefs.getString(AppConstants.keyStudyScope)),
     );
+  }
+
+  Future<void> setStudyScope(StudyScope scope) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(AppConstants.keyStudyScope, scope.value);
+    state = state.copyWith(studyScope: scope);
   }
 
   Future<void> setNewCardsPerDay(int value) async {

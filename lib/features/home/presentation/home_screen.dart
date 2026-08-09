@@ -247,6 +247,15 @@ class _TodaySessionCard extends ConsumerWidget {
           ),
         );
 
+    // 学習範囲（新規のみ/復習のみ/両方）に応じて合計・所要時間を出し分ける
+    final scope = settings.studyScope;
+    final scopedTotal = switch (scope) {
+      StudyScope.newOnly => info.newCardsCount,
+      StudyScope.reviewOnly => info.reviewCardsCount,
+      StudyScope.both => info.totalCount,
+    };
+    final scopedSeconds = scopedTotal * AppConstants.estimatedSecondsPerCard;
+
     return Container(
       width: double.infinity,
       padding: AppTheme.cardPadding,
@@ -270,39 +279,98 @@ class _TodaySessionCard extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          _InfoRow(
-            icon: Icons.bolt_rounded,
-            iconColor: AppTheme.primary,
-            label: strings.newCards,
-            value: strings
-                .newCardsRemainingOfLimit(info.newCardsCount, info.newCardsLimit),
-          ),
-          // 「1日の上限のうち今日はあと何枚か」を明示（残り枠が減る理由）
-          if (info.newCardsStudiedToday > 0)
-            Padding(
-              padding: const EdgeInsets.only(left: 32, top: 2, bottom: 2),
-              child: Text(
-                strings.newCardsStudiedNote(info.newCardsStudiedToday),
-                style: AppTheme.captionText,
+          const SizedBox(height: 12),
+          // 学習範囲の選択（新規のみ / 復習のみ / 両方）。合計はこの選択で変わる。
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<StudyScope>(
+              style: SegmentedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                textStyle: AppTheme.captionText,
               ),
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                    value: StudyScope.newOnly,
+                    label: Text(strings.studyScopeNewOnly)),
+                ButtonSegment(
+                    value: StudyScope.reviewOnly,
+                    label: Text(strings.studyScopeReviewOnly)),
+                ButtonSegment(
+                    value: StudyScope.both,
+                    label: Text(strings.studyScopeBoth)),
+              ],
+              selected: {scope},
+              onSelectionChanged: (s) =>
+                  ref.read(settingsProvider.notifier).setStudyScope(s.first),
             ),
-          _InfoRow(
-            icon: Icons.refresh_rounded,
-            iconColor: AppTheme.ratingUncertain,
-            label: strings.reviewCards,
-            value: strings.cardsCount(info.reviewCardsCount),
+          ),
+          const SizedBox(height: 14),
+          // 新規（復習のみ選択時は薄く）
+          Opacity(
+            opacity: scope == StudyScope.reviewOnly ? 0.35 : 1.0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _InfoRow(
+                  icon: Icons.bolt_rounded,
+                  iconColor: AppTheme.primary,
+                  label: strings.newCards,
+                  value: strings.newCardsRemainingOfLimit(
+                      info.newCardsCount, info.newCardsLimit),
+                ),
+                if (info.newCardsStudiedToday > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 32, top: 2, bottom: 2),
+                    child: Text(
+                      strings.newCardsStudiedNote(info.newCardsStudiedToday),
+                      style: AppTheme.captionText,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // 復習（新規のみ選択時は薄く）
+          Opacity(
+            opacity: scope == StudyScope.newOnly ? 0.35 : 1.0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _InfoRow(
+                  icon: Icons.refresh_rounded,
+                  iconColor: AppTheme.ratingUncertain,
+                  label: strings.reviewCards,
+                  value: strings.cardsCount(info.reviewCardsCount),
+                ),
+                if (info.reviewCardsCount > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 32, top: 2, bottom: 2),
+                    child: Text('（${strings.reviewDueNote}）',
+                        style: AppTheme.captionText),
+                  ),
+              ],
+            ),
           ),
           const Divider(height: 22),
+          // 合計（＝選んだ範囲の枚数）と所要時間
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                strings.cardsCount(info.totalCount),
-                style: AppTheme.monoNumberLarge.copyWith(
-                  color: AppTheme.primary,
-                  fontSize: 22,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(strings.sessionTotalLabel, style: AppTheme.bodyText),
+                  const SizedBox(width: 8),
+                  Text(
+                    strings.cardsCount(scopedTotal),
+                    style: AppTheme.monoNumberLarge.copyWith(
+                      color: AppTheme.primary,
+                      fontSize: 22,
+                    ),
+                  ),
+                ],
               ),
               Row(
                 children: [
@@ -313,7 +381,7 @@ class _TodaySessionCard extends ConsumerWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    strings.estimatedTime(info.estimatedSeconds),
+                    strings.estimatedTime(scopedSeconds),
                     style: AppTheme.bodyText,
                   ),
                 ],

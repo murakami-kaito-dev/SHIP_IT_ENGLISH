@@ -31,6 +31,11 @@ class AppStrings {
   final String todaysSession;
   final String newCards;
   final String reviewCards;
+  final String studyScopeNewOnly;
+  final String studyScopeReviewOnly;
+  final String studyScopeBoth;
+  final String sessionTotalLabel;
+  final String reviewDueNote;
   final String startLearning;
   final String sessionCompleteToday;
   final String reviewAgain;
@@ -184,6 +189,11 @@ class AppStrings {
     required this.todaysSession,
     required this.newCards,
     required this.reviewCards,
+    required this.studyScopeNewOnly,
+    required this.studyScopeReviewOnly,
+    required this.studyScopeBoth,
+    required this.sessionTotalLabel,
+    required this.reviewDueNote,
     required this.startLearning,
     required this.sessionCompleteToday,
     required this.reviewAgain,
@@ -418,6 +428,8 @@ class AppStrings {
   List<MapEntry<String, String>> sessionHelpEntries() {
     if (mode == LanguageMode.ja) {
       return const [
+        MapEntry('学習範囲（新規のみ / 復習のみ / 両方）',
+            '今日のセッションで学習する範囲を選べます。「新規のみ」＝新しいカードだけ、「復習のみ」＝期限が来た復習だけ、「両方」＝新規＋復習。合計枚数はこの選択で変わります（復習の予定日サイクルは変わりません）。'),
         MapEntry('新規（残り / 上限）',
             '「1日の新規カード数」の上限のうち、今日まだ学習していない残り枚数です。新規を学習するとその分だけ減り、日付が変わると上限まで戻ります。'),
         MapEntry('復習',
@@ -433,6 +445,8 @@ class AppStrings {
       ];
     }
     return const [
+      MapEntry('Study scope (New only / Review only / Both)',
+          'Choose what today\'s session includes: New only, Review only (cards that are due), or Both. The total count changes with this choice (the review scheduling itself does not change).'),
       MapEntry('New (left / limit)',
           'How many new cards remain today out of your daily limit. Studying new cards lowers it; it resets to the limit each day.'),
       MapEntry('Review',
@@ -458,6 +472,11 @@ class AppStrings {
     todaysSession: '今日のセッション',
     newCards: '新規',
     reviewCards: '復習',
+    studyScopeNewOnly: '新規のみ',
+    studyScopeReviewOnly: '復習のみ',
+    studyScopeBoth: '両方',
+    sessionTotalLabel: '合計',
+    reviewDueNote: '期限が来た分',
     startLearning: '学習を始める',
     sessionCompleteToday: '今日のセッション完了！',
     reviewAgain: 'もう一度復習する',
@@ -585,6 +604,11 @@ class AppStrings {
     todaysSession: "Today's Session",
     newCards: 'New',
     reviewCards: 'Review',
+    studyScopeNewOnly: 'New',
+    studyScopeReviewOnly: 'Review',
+    studyScopeBoth: 'Both',
+    sessionTotalLabel: 'Total',
+    reviewDueNote: 'due for review',
     startLearning: 'Start Learning',
     sessionCompleteToday: "Today's session complete!",
     reviewAgain: 'Review again',
