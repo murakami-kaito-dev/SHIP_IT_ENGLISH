@@ -225,8 +225,12 @@ class _PlayerBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // 秒単位シークバー（今鳴っている音声内を左右にスライドしてその位置から再生）
-          const _SeekBar(),
+          // カード全体（4行を1本のタイムライン）の秒シークバー
+          _SeekBar(
+            currentLine: st.line,
+            lineDurations: st.lineDurations,
+            onSeek: controller.seekToGlobal,
+          ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -283,10 +287,17 @@ class _PlayerBody extends StatelessWidget {
   }
 }
 
-/// 今鳴っている音声（現在の行のクリップ）の**秒単位**シークバー。
-/// つまみを左右にドラッグして離すと、その秒位置から再生し直す。
+/// **カード全体（4行を1本のタイムライン）**の秒シークバー。
+/// 4クリップの長さを連結した通算秒でスクラブし、離した位置（該当行＋オフセット）
+/// から再生する。
 class _SeekBar extends StatefulWidget {
-  const _SeekBar();
+  final int currentLine;
+  final List<Duration> lineDurations;
+  final ValueChanged<Duration> onSeek;
+  const _SeekBar(
+      {required this.currentLine,
+      required this.lineDurations,
+      required this.onSeek});
 
   @override
   State<_SeekBar> createState() => _SeekBarState();
@@ -294,41 +305,54 @@ class _SeekBar extends StatefulWidget {
 
 class _SeekBarState extends State<_SeekBar> {
   final _clip = AudioClipService();
-  Duration _pos = Duration.zero;
-  Duration _dur = Duration.zero;
-  double? _drag; // ドラッグ中の一時値（ミリ秒）
+  Duration _clipPos = Duration.zero; // 現在行クリップ内の位置
+  double? _drag; // ドラッグ中の通算ミリ秒
   StreamSubscription<Duration>? _posSub;
-  StreamSubscription<Duration>? _durSub;
 
   @override
   void initState() {
     super.initState();
     _posSub = _clip.onPositionChanged.listen((d) {
-      if (mounted && _drag == null) setState(() => _pos = d);
-    });
-    _durSub = _clip.onDurationChanged.listen((d) {
-      if (mounted) setState(() => _dur = d);
+      if (mounted && _drag == null) setState(() => _clipPos = d);
     });
   }
 
   @override
   void dispose() {
     _posSub?.cancel();
-    _durSub?.cancel();
     super.dispose();
   }
 
-  String _fmt(Duration d) {
-    final s = d.inSeconds;
+  String _fmt(int ms) {
+    final s = ms ~/ 1000;
     return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+  }
+
+  int get _totalMs =>
+      widget.lineDurations.fold(0, (a, b) => a + b.inMilliseconds);
+
+  // 現在行より前の行の長さの合計（通算オフセットの基点）
+  int get _cumBeforeMs {
+    var s = 0;
+    for (var i = 0;
+        i < widget.currentLine && i < widget.lineDurations.length;
+        i++) {
+      s += widget.lineDurations[i].inMilliseconds;
+    }
+    return s;
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalMs = _dur.inMilliseconds;
-    final hasClip = totalMs > 0;
-    final posMs = (_drag ?? _pos.inMilliseconds.toDouble())
-        .clamp(0.0, totalMs.toDouble());
+    final totalMs = _totalMs;
+    final hasTimeline = totalMs > 0 && widget.lineDurations.isNotEmpty;
+
+    final curLineMs = widget.currentLine < widget.lineDurations.length
+        ? widget.lineDurations[widget.currentLine].inMilliseconds
+        : 0;
+    final clipMs = _clipPos.inMilliseconds.clamp(0, curLineMs);
+    final liveGlobal = (_cumBeforeMs + clipMs).toDouble();
+    final value = (_drag ?? liveGlobal).clamp(0.0, totalMs.toDouble());
 
     return Column(
       children: [
@@ -342,17 +366,14 @@ class _SeekBarState extends State<_SeekBar> {
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
           ),
           child: Slider(
-            value: hasClip ? posMs : 0,
+            value: hasTimeline ? value : 0,
             min: 0,
-            max: hasClip ? totalMs.toDouble() : 1,
-            onChanged: hasClip ? (v) => setState(() => _drag = v) : null,
-            onChangeEnd: hasClip
+            max: hasTimeline ? totalMs.toDouble() : 1,
+            onChanged: hasTimeline ? (v) => setState(() => _drag = v) : null,
+            onChangeEnd: hasTimeline
                 ? (v) {
-                    _clip.seek(Duration(milliseconds: v.round()));
-                    setState(() {
-                      _pos = Duration(milliseconds: v.round());
-                      _drag = null;
-                    });
+                    widget.onSeek(Duration(milliseconds: v.round()));
+                    setState(() => _drag = null);
                   }
                 : null,
           ),
@@ -362,9 +383,8 @@ class _SeekBarState extends State<_SeekBar> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(_fmt(Duration(milliseconds: posMs.round())),
-                  style: AppTheme.monoLabel),
-              Text(_fmt(_dur), style: AppTheme.monoLabel),
+              Text(_fmt(value.round()), style: AppTheme.monoLabel),
+              Text(_fmt(totalMs), style: AppTheme.monoLabel),
             ],
           ),
         ),

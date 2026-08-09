@@ -46,6 +46,10 @@ class ListeningState {
   final bool finished; // 繰り返しOFFで最後まで再生し終えた
   final LanguageMode mode;
 
+  /// 現在カードの各行（4本）のクリップ長。カード全体シークバーの目盛りに使う。
+  /// 計測前は空。
+  final List<Duration> lineDurations;
+
   const ListeningState({
     required this.queue,
     required this.index,
@@ -55,6 +59,7 @@ class ListeningState {
     required this.speed,
     required this.finished,
     required this.mode,
+    this.lineDurations = const [],
   });
 
   bool get isEmpty => queue.isEmpty;
@@ -81,6 +86,7 @@ class ListeningState {
     double? speed,
     bool? finished,
     LanguageMode? mode,
+    List<Duration>? lineDurations,
   }) =>
       ListeningState(
         queue: queue ?? this.queue,
@@ -91,8 +97,25 @@ class ListeningState {
         speed: speed ?? this.speed,
         finished: finished ?? this.finished,
         mode: mode ?? this.mode,
+        lineDurations: lineDurations ?? this.lineDurations,
       );
 }
 
 /// 選べる再生速度。
 const List<double> kListenSpeeds = [0.75, 1.0, 1.25, 1.5];
+
+/// カード全体の通算位置 [target] を、各行のクリップ長 [durs] から
+/// 「どの行の、行内何ミリ秒か」に変換する（全体シークバーの秒→行変換）。
+({int line, Duration offset}) lineAtGlobal(
+    List<Duration> durs, Duration target) {
+  if (durs.isEmpty) return (line: 0, offset: Duration.zero);
+  var remaining = target < Duration.zero ? Duration.zero : target;
+  var line = 0;
+  for (; line < durs.length - 1; line++) {
+    if (remaining < durs[line]) break;
+    remaining -= durs[line];
+  }
+  final within = durs[line];
+  if (within > Duration.zero && remaining > within) remaining = within;
+  return (line: line, offset: remaining);
+}

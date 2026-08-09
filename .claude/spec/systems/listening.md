@@ -22,7 +22,7 @@
 - **速度**（`speed`・`kListenSpeeds`=0.75/1.0/1.25/1.5）。速度・繰り返しは prefs 永続化（`keyListenSpeed`/`keyListenRepeat`）。
   - **速度変更は再生中のクリップにも即時反映**：`setSpeed` が `TtsService.setPlaybackRate`→`AudioClipService.setPlaybackRate`（`_player.setPlaybackRate`）を呼ぶ。`playAndWait` も毎回 `setPlaybackRate(rate)`（1.0でも）して前クリップの倍率持ち越しを防ぐ。
 - **シーク**：`jumpTo(index)` でその位置の**カード**へ移動（キュー行タップ）。`seekToLine(line)` で**現在カード内の行**の頭から再生し直す（カードの各行タップ）。
-- **秒単位シーク**：シークバーは `AudioClipService.onPositionChanged/onDurationChanged` を購読し、`seek(Duration)` で**今鳴っているクリップ内を秒単位でスクラブ**する（`_player.seek`）。TTSフォールバック行は長さ不明なので無効表示。
+- **秒単位シーク（カード全体）**：シークバーは**4行のクリップ長を連結した1本のタイムライン**。`AudioClipService.probeDuration`（キャッシュ付き）で各行長を計測して `state.lineDurations` に保持（カード変更時に再計測）。通算位置は `lineAtGlobal(durs, target)` で (行, 行内オフセット) に変換し、`seekToGlobal` が同一行なら `_tts.seek`、別行なら `startOffset` 付きでその行から再生し直す（`playAndWait` が再生後に `seek`）。ライブ位置は `onPositionChanged`（現在行）＋前行までの累計。TTSフォールバック行は長さ0扱い。
 - 停止/一時停止/スキップ/並べ替えは `_runToken`（世代トークン）で進行中ループを無効化して制御。`dispose` で停止。
 - **バックグラウンド/画面ロック再生**：`ios/Runner/Info.plist` の `UIBackgroundModes=[audio]`＋`playback` カテゴリで、スリープ・アプリ切替中も再生継続。
 - **ロック画面/コントロールセンター表示・操作**（[now_playing_service.dart](../../../lib/core/services/now_playing_service.dart) ＋ [AppDelegate.swift](../../../ios/Runner/AppDelegate.swift)）：

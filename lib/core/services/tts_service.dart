@@ -76,13 +76,14 @@ class TtsService {
   }
 
   /// 耳学（リスニング）用：指定ロケールで読み上げ、**再生完了まで待つ**。
-  /// [rate] は再生速度倍率（1.0=標準）。外部から [stop] されると途中でも返る。
+  /// [rate] は再生速度倍率（1.0=標準）。[startOffset] からの途中再生に対応。
+  /// 外部から [stop] されると途中でも返る。
   Future<void> speakAndWait(String text, String locale,
-      {double rate = 1.0}) async {
+      {double rate = 1.0, Duration startOffset = Duration.zero}) async {
     if (text.trim().isEmpty) return;
     await _tts.stop();
-    final played =
-        await AudioClipService().playAndWait(text, locale, rate: rate);
+    final played = await AudioClipService()
+        .playAndWait(text, locale, rate: rate, startOffset: startOffset);
     if (played) return;
 
     // 端末TTSフォールバック（完了を待つ）
@@ -106,6 +107,16 @@ class TtsService {
   /// 端末TTSは発話中の速度変更に非対応（次の発話から反映）。
   Future<void> setPlaybackRate(double rate) async {
     await AudioClipService().setPlaybackRate(rate);
+  }
+
+  /// 現在鳴っているクリップ内をシーク（同一行内の位置調整）。
+  Future<void> seek(Duration position) async {
+    await AudioClipService().seek(position);
+  }
+
+  /// クリップ長を計測（カード全体シークバーの目盛り用）。無ければ null。
+  Future<Duration?> probeDuration(String text, String locale) async {
+    return AudioClipService().probeDuration(text, locale);
   }
 
   Future<void> stop() async {

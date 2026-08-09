@@ -104,8 +104,10 @@ class AudioClipService {
 
   /// 耳学（リスニング）用：同梱クリップがあれば**再生完了まで待って** true を返す。
   /// 無ければ false（呼び出し側が端末TTSにフォールバック）。
-  /// [rate] は再生速度倍率（1.0=標準）。外部から stop() されると途中でも返る。
-  Future<bool> playAndWait(String text, String locale, {double rate = 1.0}) async {
+  /// [rate] は再生速度倍率（1.0=標準）。[startOffset] からの途中再生に対応。
+  /// 外部から stop() されると途中でも返る。
+  Future<bool> playAndWait(String text, String locale,
+      {double rate = 1.0, Duration startOffset = Duration.zero}) async {
     if (text.trim().isEmpty) return false;
     await _ensureLoaded();
     final key = _key(text);
@@ -125,6 +127,10 @@ class AudioClipService {
         if (!wait.isCompleted) wait.complete();
       });
       await _player.play(AssetSource('audio/$locale/$key.m4a'), volume: 1.0);
+      // 途中位置から再生する場合はシーク（カード全体シークで使う）
+      if (startOffset > Duration.zero) {
+        await _player.seek(startOffset);
+      }
       // 再生開始後に速度指定（開始前だと無視される端末がある）。
       // 前クリップが1.5倍のまま等の持ち越しを避けるため、1.0でも必ず設定する。
       await _player.setPlaybackRate(rate);
@@ -135,6 +141,44 @@ class AudioClipService {
       return true; // クリップは存在した＝端末TTSへは落とさない
     } finally {
       await sub?.cancel();
+    }
+  }
+
+  /// クリップの長さを計測する（カード全体シークバーの目盛り用）。一度計測したら
+  /// キャッシュ。同梱クリップが無ければ null（端末TTS＝長さ不明）。
+  final Map<String, Duration> _durationCache = {};
+  Future<Duration?> probeDuration(String text, String locale) async {
+    if (text.trim().isEmpty) return Duration.zero;
+    await _ensureLoaded();
+    final key = _key(text);
+    if (!(_keysByLocale[locale]?.contains(key) ?? false)) return null;
+    final cacheKey = '$locale/$key';
+    final cached = _durationCache[cacheKey];
+    if (cached != null) return cached;
+
+    // 4行を同時計測するため playerId は clip 単位で一意にする（衝突回避）
+    final probe = AudioPlayer(playerId: 'probe_$cacheKey');
+    final done = Completer<Duration>();
+    StreamSubscription<Duration>? sub;
+    try {
+      sub = probe.onDurationChanged.listen((d) {
+        if (d > Duration.zero && !done.isCompleted) done.complete(d);
+      });
+      await probe.setSource(AssetSource('audio/$locale/$key.m4a'));
+      final immediate = await probe.getDuration();
+      if (immediate != null && immediate > Duration.zero && !done.isCompleted) {
+        done.complete(immediate);
+      }
+      final d = await done.future
+          .timeout(const Duration(seconds: 3), onTimeout: () => Duration.zero);
+      if (d > Duration.zero) _durationCache[cacheKey] = d;
+      return d;
+    } catch (e) {
+      debugPrint('[AudioClipService] probeDuration failed: $e');
+      return null;
+    } finally {
+      await sub?.cancel();
+      await probe.dispose();
     }
   }
 

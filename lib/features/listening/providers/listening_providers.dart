@@ -67,6 +67,10 @@ class ListeningController extends StateNotifier<ListeningState> {
   /// 再生シーケンスの世代。停止/スキップ/並べ替えで無効化して古いループを止める。
   int _runToken = 0;
 
+  /// カード全体シークで「この行を、この位置から」開始したい指定（ループが消費）。
+  int _seekLine = -1;
+  Duration _seekOffset = Duration.zero;
+
   final NowPlayingService _np = NowPlayingService.instance;
 
   ListeningController(this._tts) : super(ListeningState.initial) {
@@ -112,8 +116,12 @@ class ListeningController extends StateNotifier<ListeningState> {
       finished: false,
       mode: mode,
       isPlaying: false,
+      lineDurations: const [],
     );
-    if (cards.isNotEmpty) play();
+    if (cards.isNotEmpty) {
+      unawaited(_probeCurrentCard());
+      play();
+    }
   }
 
   void play() {
@@ -139,8 +147,7 @@ class ListeningController extends StateNotifier<ListeningState> {
   /// キュー内の特定カードへ移動して再生する（キュー行タップ用）。
   void jumpTo(int index) => _seek(index, autoplay: true);
 
-  /// **現在のカード内**で、指定の行（0..3）から再生し直す（シークバー用）。
-  /// カードは移動せず、そのアイテムのどの位置から流すかを変える。
+  /// **現在のカード内**で、指定の行（0..3）の頭から再生し直す（行タップ用）。
   void seekToLine(int line) {
     if (state.isEmpty) return;
     final count = speechLinesFor(state.current!, state.mode).length;
@@ -151,13 +158,56 @@ class ListeningController extends StateNotifier<ListeningState> {
     play();
   }
 
+  /// **カード全体（4行を1本のタイムライン）**での秒シーク。
+  /// [target] は「各行のクリップ長を連結した」通算位置。該当行＋その行内オフセットを
+  /// 求めて、そこから再生する。
+  void seekToGlobal(Duration target) {
+    if (state.isEmpty || state.lineDurations.isEmpty) return;
+    final r = lineAtGlobal(state.lineDurations, target);
+
+    if (r.line == state.line && state.isPlaying) {
+      // 同じ行なら鳴っているクリップを直接シーク（再スタート不要）
+      unawaited(_tts.seek(r.offset));
+    } else {
+      // 別の行 → その行を指定オフセットから再生し直す
+      _seekLine = r.line;
+      _seekOffset = r.offset;
+      _runToken++;
+      unawaited(_tts.stop());
+      state = state.copyWith(line: r.line, finished: false, isPlaying: false);
+      play();
+    }
+  }
+
+  /// 現在カードの各行のクリップ長を計測して `lineDurations` に反映する。
+  /// カードが変わるたびに呼ぶ（全体シークバーの目盛り用・キャッシュ済み）。
+  Future<void> _probeCurrentCard() async {
+    final card = state.current;
+    if (card == null) return;
+    final cardId = card.id;
+    final lines = speechLinesFor(card, state.mode);
+    final durs = await Future.wait(lines.map(
+        (l) => _tts.probeDuration(l.text, l.locale).then((d) => d ?? Duration.zero)));
+    // 計測中にカードが変わっていなければ反映
+    if (state.current?.id == cardId) {
+      state = state.copyWith(lineDurations: durs);
+    }
+  }
+
   void _seek(int target, {required bool autoplay}) {
     if (state.isEmpty) return;
     final clamped = target.clamp(0, state.queue.length - 1);
+    final cardChanged = clamped != state.index;
     _runToken++;
     unawaited(_tts.stop());
     state = state.copyWith(
-        index: clamped, line: 0, finished: false, isPlaying: false);
+      index: clamped,
+      line: 0,
+      finished: false,
+      isPlaying: false,
+      lineDurations: cardChanged ? const [] : state.lineDurations,
+    );
+    if (cardChanged) unawaited(_probeCurrentCard());
     if (autoplay) play();
   }
 
@@ -201,8 +251,14 @@ class ListeningController extends StateNotifier<ListeningState> {
       for (var li = state.line; li < lines.length; li++) {
         if (token != _runToken || !state.isPlaying) return;
         state = state.copyWith(line: li);
+        // カード全体シークで指定された行なら、その位置から再生する
+        final offset = (li == _seekLine) ? _seekOffset : Duration.zero;
+        if (li == _seekLine) {
+          _seekLine = -1;
+          _seekOffset = Duration.zero;
+        }
         await _tts.speakAndWait(lines[li].text, lines[li].locale,
-            rate: state.speed);
+            rate: state.speed, startOffset: offset);
         if (token != _runToken || !state.isPlaying) return;
         if (li < lines.length - 1) {
           await _gap(_lineGap, token);
@@ -216,7 +272,8 @@ class ListeningController extends StateNotifier<ListeningState> {
         if (state.repeat) {
           await _gap(_cardGap, token);
           if (token != _runToken || !state.isPlaying) return;
-          state = state.copyWith(index: 0, line: 0);
+          state = state.copyWith(index: 0, line: 0, lineDurations: const []);
+          unawaited(_probeCurrentCard());
           _updateNowPlaying();
         } else {
           state = state.copyWith(isPlaying: false, finished: true, line: 0);
@@ -226,7 +283,9 @@ class ListeningController extends StateNotifier<ListeningState> {
       } else {
         await _gap(_cardGap, token);
         if (token != _runToken || !state.isPlaying) return;
-        state = state.copyWith(index: state.index + 1, line: 0);
+        state = state.copyWith(
+            index: state.index + 1, line: 0, lineDurations: const []);
+        unawaited(_probeCurrentCard());
         _updateNowPlaying();
       }
     }
