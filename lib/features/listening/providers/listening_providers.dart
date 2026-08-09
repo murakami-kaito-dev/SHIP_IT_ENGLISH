@@ -192,6 +192,13 @@ class ListeningController extends StateNotifier<ListeningState> {
     if (state.current?.id == cardId) {
       state = state.copyWith(lineDurations: durs);
     }
+    // 次カードを先読み（キャッシュ温め）。進んだ瞬間にゲージが確定し潰れない。
+    final nextIdx = state.index + 1;
+    if (nextIdx < state.queue.length) {
+      for (final l in speechLinesFor(state.queue[nextIdx], state.mode)) {
+        unawaited(_tts.probeDuration(l.text, l.locale));
+      }
+    }
   }
 
   void _seek(int target, {required bool autoplay}) {
@@ -200,12 +207,13 @@ class ListeningController extends StateNotifier<ListeningState> {
     final cardChanged = clamped != state.index;
     _runToken++;
     unawaited(_tts.stop());
+    // ゲージを空にしない（潰れて再構築＝チラつきの原因）。旧値を保持したまま
+    // 新カードの長さを計測して差し替える。
     state = state.copyWith(
       index: clamped,
       line: 0,
       finished: false,
       isPlaying: false,
-      lineDurations: cardChanged ? const [] : state.lineDurations,
     );
     if (cardChanged) unawaited(_probeCurrentCard());
     if (autoplay) play();
@@ -272,7 +280,8 @@ class ListeningController extends StateNotifier<ListeningState> {
         if (state.repeat) {
           await _gap(_cardGap, token);
           if (token != _runToken || !state.isPlaying) return;
-          state = state.copyWith(index: 0, line: 0, lineDurations: const []);
+          // ゲージは潰さず、新カードの長さを計測して差し替える（先読み済みなら即時）
+          state = state.copyWith(index: 0, line: 0);
           unawaited(_probeCurrentCard());
           _updateNowPlaying();
         } else {
@@ -283,8 +292,7 @@ class ListeningController extends StateNotifier<ListeningState> {
       } else {
         await _gap(_cardGap, token);
         if (token != _runToken || !state.isPlaying) return;
-        state = state.copyWith(
-            index: state.index + 1, line: 0, lineDurations: const []);
+        state = state.copyWith(index: state.index + 1, line: 0);
         unawaited(_probeCurrentCard());
         _updateNowPlaying();
       }

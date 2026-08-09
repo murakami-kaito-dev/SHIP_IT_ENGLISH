@@ -333,6 +333,16 @@ class _SeekBarState extends State<_SeekBar> {
     });
   }
 
+  @override
+  void didUpdateWidget(covariant _SeekBar old) {
+    super.didUpdateWidget(old);
+    // 行が変わった瞬間は前クリップの再生位置が残っていて通算値が1フレーム飛ぶ
+    // （＝境界でのチラつき）。位置を0に戻し、次のtickから正しく積み上げる。
+    if (widget.currentLine != old.currentLine) {
+      _clipPos = Duration.zero;
+    }
+  }
+
   void _clearHold() {
     _hold = null;
     _holdLine = -1;
