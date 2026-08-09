@@ -106,6 +106,7 @@ class AppStrings {
   final String resetAction;
   final String resetDone;
   final String languageLabel;
+  final String languageModeDescription;
 
   // カード詳細からの評価
   final String updateStatusLabel;
@@ -245,6 +246,7 @@ class AppStrings {
     required this.resetAction,
     required this.resetDone,
     required this.languageLabel,
+    required this.languageModeDescription,
     required this.updateStatusLabel,
     required this.ratingSaved,
     required this.resetToNotStudied,
@@ -498,7 +500,7 @@ class AppStrings {
     sectionStudy: '学習',
     sectionNotification: '通知',
     sectionData: 'データ',
-    sectionLanguage: '言語 / Language',
+    sectionLanguage: '学習モード',
     newCardsPerDay: '1日の新規カード数',
     dailyReminder: '毎日のリマインダー',
     reminderTime: '通知時刻',
@@ -517,7 +519,8 @@ class AppStrings {
     cancel: 'キャンセル',
     resetAction: 'リセット',
     resetDone: '学習データをリセットしました',
-    languageLabel: '表示言語',
+    languageLabel: 'あなたの言語',
+    languageModeDescription: '日本語で表示し、海外エンジニアと働くための「技術英語」を学びます',
     updateStatusLabel: '📌 学習状況を更新',
     ratingSaved: '学習状況を更新しました',
     resetToNotStudied: '未学習に戻す',
@@ -624,7 +627,7 @@ class AppStrings {
     sectionStudy: 'Study',
     sectionNotification: 'Notifications',
     sectionData: 'Data',
-    sectionLanguage: 'Language / 言語',
+    sectionLanguage: 'Learning Mode',
     newCardsPerDay: 'New cards per day',
     dailyReminder: 'Daily reminder',
     reminderTime: 'Reminder time',
@@ -646,7 +649,8 @@ class AppStrings {
     cancel: 'Cancel',
     resetAction: 'Reset',
     resetDone: 'Learning data has been reset',
-    languageLabel: 'Display language',
+    languageLabel: 'Your language',
+    languageModeDescription: 'Shown in English — learn the technical Japanese to work with Japanese engineers',
     updateStatusLabel: '📌 Update your progress',
     ratingSaved: 'Progress updated',
     resetToNotStudied: 'Reset to not studied',

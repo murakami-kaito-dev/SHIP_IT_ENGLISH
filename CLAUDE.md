@@ -237,7 +237,7 @@ test/
 - **カード番号はカテゴリごとの通し番号**（`cards.card_number`）。シード時に cards.json の並び順で1から採番するため、**カードの順序を入れ替えると番号が変わる**（追加は末尾に）
 - **進捗表示は `studiedCount`（status != 'new'）を使う**。`mastered` は21日間隔到達が条件で数週間かかるため、これを主指標にすると「学習しても0のまま」になる
 - **カードに新フィールドを足すとき**: cards.json + `card_model.dart` + `seed_data.dart` + `database_helper.dart`（DBバージョン++とマイグレーション）の4点セット。翻訳が必要なら `dart_defines.json` の GEMINI_API_KEY で開発時に一括生成（実行時API呼び出しはしない）
-- **発音音声は「開発時に OpenAI TTS(nova) で一括生成→同梱、実行時は再生のみ（非通信）」**。`speakTarget` は jaモード（英語）で同梱クリップがあれば `AudioClipService` で再生、無ければ `flutter_tts` にフォールバック。生成は `dart run tools/generate_tts.dart --generate`（差分生成・要 `OPENAI_API_KEY`）。OpenAIからWAV取得→`afconvert`でAAC(.m4a)化。ファイル名は `sha1(trimしたテキスト)`.m4a で生成側/実行側が一致。全3826件・約123MB同梱済み。カード追加時は音声も差分生成してコミット（手順は `docs/tts_audio_generation.md`）
+- **発音音声は「開発時に OpenAI TTS(nova) で一括生成→同梱、実行時は再生のみ（非通信）」・英語/日本語の2ロケール**。`speakTarget` は対象ロケール（ja→en-US / en→ja-JP）で同梱クリップがあれば `AudioClipService.playIfAvailable(text, locale)` で再生、無ければ `flutter_tts` にフォールバック。生成は `dart run tools/generate_tts.dart --locale <en-US|ja-JP> --generate`（差分生成・要 `OPENAI_API_KEY`）。OpenAIからWAV取得→`afconvert`でAAC(.m4a)化。ファイル名は `sha1(trimしたテキスト)`.m4a。en-US=3826件/約124MB・ja-JP=3822件/約158MB 同梱済み。カード追加時は両ロケール差分生成してコミット（手順は `docs/tts_audio_generation.md`）
 - **ゲーミフィケーションのXP/コンボ判定は `gamificationProvider` に集約**。study_screen は `registerAnswer(rating, firstTry)` を呼んで返る `AnswerOutcome`（combo/xpGained/fever/leveledUp）でエフェクトを発火するだけ。XP量・コンボ閾値・FEVER倍率・デイリー目標は `GamificationConfig` の定数のみで調整する
 - **XP総量だけを永続化**（`keyTotalXp`）。レベルとレベル内進捗は `GamificationSnapshot.fromTotalXp()` で都度算出（別々に保存しない）。コンボ・セッションXPはセッション内の一時状態で永続化しない（`startSession()` でリセット）
 - **効果音/振動は必ず `SoundService` 経由**（直接 HapticFeedback を撒かない）。実SFXを足すときは `_sfx()` をローカルアセット再生に差し替える（ネットワーク非通信・データ収集なしの方針を維持）

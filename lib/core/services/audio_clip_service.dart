@@ -5,27 +5,33 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
-/// 事前生成した発音音声（Amazon Polly Neural）をオフライン再生する。
+/// 事前生成した発音音声（OpenAI TTS）をオフライン再生する。
 ///
-/// ビルドに同梱された `assets/audio/en-US/<sha1(text)>.mp3` を、読み上げたい
+/// ロケール別に同梱された `assets/audio/<locale>/<sha1(text)>.m4a` を、読み上げたい
 /// テキストのハッシュから引いて再生する。マニフェスト（利用可能なキー一覧）は
 /// 起動時に一度だけ読み込む。該当クリップが無ければ [playIfAvailable] は false を
 /// 返し、呼び出し側（[TtsService]）が端末TTSにフォールバックする。
 ///
-/// 生成側（tools/generate_tts.dart）と**同じ正規化・同じsha1**でキーを作るため、
-/// 対応関係が常に一致する。
+/// - en-US（英語・jaモードの学習対象）: manifest = assets/audio/manifest.json
+/// - ja-JP（日本語・enモードの学習対象）: manifest = assets/audio/ja-JP/manifest.json
+///
+/// 生成側（tools/generate_tts.dart）と**同じ正規化・同じsha1**でキーを作る。
 class AudioClipService {
   static final AudioClipService _instance = AudioClipService._();
   factory AudioClipService() => _instance;
   AudioClipService._();
 
   final AudioPlayer _player = AudioPlayer(playerId: 'pronunciation');
-  Set<String> _keys = <String>{};
+
+  /// ロケール → 利用可能なキー集合
+  final Map<String, Set<String>> _keysByLocale = {};
   bool _loaded = false;
 
-  static const _manifestAsset = 'assets/audio/manifest.json';
-  // audioplayers の AssetSource は `assets/` を自動で前置するため、その先を渡す。
-  static const _clipDir = 'audio/en-US';
+  // ロケールごとの manifest 位置（audioplayers の AssetSource は `assets/` を自動前置）
+  static const _manifests = {
+    'en-US': 'assets/audio/manifest.json',
+    'ja-JP': 'assets/audio/ja-JP/manifest.json',
+  };
 
   String _key(String text) =>
       sha1.convert(utf8.encode(text.trim())).toString();
@@ -54,27 +60,31 @@ class AudioClipService {
     } catch (e) {
       debugPrint('[AudioClipService] audio context failed: $e');
     }
-    // マニフェスト読み込み（無ければ全て端末TTSにフォールバック）
-    try {
-      final raw = await rootBundle.loadString(_manifestAsset);
-      final map = json.decode(raw) as Map<String, dynamic>;
-      _keys = Set<String>.from((map['keys'] as List<dynamic>? ?? const [])
-          .map((e) => e.toString()));
-    } catch (e) {
-      _keys = <String>{};
-      debugPrint('[AudioClipService] manifest load failed: $e');
+    // 各ロケールのマニフェスト読み込み（無ければそのロケールは端末TTSにフォールバック）
+    for (final entry in _manifests.entries) {
+      try {
+        final raw = await rootBundle.loadString(entry.value);
+        final map = json.decode(raw) as Map<String, dynamic>;
+        _keysByLocale[entry.key] = Set<String>.from(
+            (map['keys'] as List<dynamic>? ?? const [])
+                .map((e) => e.toString()));
+      } catch (e) {
+        _keysByLocale[entry.key] = <String>{};
+        debugPrint('[AudioClipService] manifest(${entry.key}) load failed: $e');
+      }
     }
   }
 
-  /// 同梱クリップがあれば再生して true。無ければ何もせず false。
-  Future<bool> playIfAvailable(String text) async {
+  /// 指定ロケールに同梱クリップがあれば再生して true。無ければ何もせず false。
+  /// [locale] は 'en-US'（英語）/ 'ja-JP'（日本語）。
+  Future<bool> playIfAvailable(String text, String locale) async {
     if (text.trim().isEmpty) return false;
     await _ensureLoaded();
     final key = _key(text);
-    if (!_keys.contains(key)) return false;
+    if (!(_keysByLocale[locale]?.contains(key) ?? false)) return false;
     try {
       await _player.stop();
-      await _player.play(AssetSource('$_clipDir/$key.m4a'));
+      await _player.play(AssetSource('audio/$locale/$key.m4a'));
       return true;
     } catch (e) {
       debugPrint('[AudioClipService] play failed: $e');

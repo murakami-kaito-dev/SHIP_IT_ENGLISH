@@ -48,19 +48,17 @@ class TtsService {
   Future<void> speakTarget(String text, LanguageMode mode) async {
     if (text.trim().isEmpty) return;
 
-    // jaモードの読み上げ対象は英語。事前生成した高品質音声があればそれを再生し、
-    // 端末TTSは鳴らさない（二重再生を防ぐため先に端末TTSを止める）。
-    if (mode == LanguageMode.ja) {
-      await _tts.stop();
-      final played = await AudioClipService().playIfAvailable(text);
-      if (played) return;
-    }
+    // 読み上げ対象言語：jaモード＝英語(en-US) / enモード＝日本語(ja-JP)。
+    final lang = mode == LanguageMode.ja ? 'en-US' : 'ja-JP';
+
+    // 事前生成した高品質音声があればそれを再生（端末TTSは鳴らさない。
+    // 二重再生を防ぐため先に端末TTSを止める）。
+    await _tts.stop();
+    final played = await AudioClipService().playIfAvailable(text, lang);
+    if (played) return;
 
     try {
       await _ensureInitialized();
-
-      final lang = mode == LanguageMode.ja ? 'en-US' : 'ja-JP';
-
       await _tts.stop();
       // 対象言語の音声が端末に無い場合は既定音声にフォールバックさせる
       final available = await _tts.isLanguageAvailable(lang);

@@ -132,11 +132,20 @@ class _CardDetailSheetState extends ConsumerState<_CardDetailSheet> {
             ),
             const SizedBox(height: 6),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Text('"${card.phrase}"', style: AppTheme.phraseText),
                 ),
                 CardStatusChip(rating: _rating, strings: strings),
+                // jaモード（学習対象＝英語フレーズ）ではここに読み上げ
+                if (isJa) ...[
+                  const SizedBox(width: 4),
+                  _SpeakerButton(
+                    onTap: () =>
+                        TtsService().speakTarget(speakTarget, strings.mode),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 8),
@@ -147,10 +156,12 @@ class _CardDetailSheetState extends ConsumerState<_CardDetailSheet> {
                   child:
                       Text(card.translation, style: AppTheme.translationText),
                 ),
-                _SpeakerButton(
-                  onTap: () =>
-                      TtsService().speakTarget(speakTarget, strings.mode),
-                ),
+                // enモード（学習対象＝日本語訳）ではここに読み上げ
+                if (!isJa)
+                  _SpeakerButton(
+                    onTap: () =>
+                        TtsService().speakTarget(speakTarget, strings.mode),
+                  ),
               ],
             ),
             const Divider(height: 32),
@@ -170,14 +181,30 @@ class _CardDetailSheetState extends ConsumerState<_CardDetailSheet> {
                         AppTheme.bodyText.copyWith(fontStyle: FontStyle.italic),
                   ),
                 ),
-                _SpeakerButton(
-                  onTap: () =>
-                      TtsService().speakTarget(speakExample, strings.mode),
-                ),
+                // jaモード（学習対象＝英語例文）ではここに読み上げ
+                if (isJa)
+                  _SpeakerButton(
+                    onTap: () =>
+                        TtsService().speakTarget(speakExample, strings.mode),
+                  ),
               ],
             ),
             const SizedBox(height: 8),
-            Text(card.exampleTranslation, style: AppTheme.bodyText),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child:
+                      Text(card.exampleTranslation, style: AppTheme.bodyText),
+                ),
+                // enモード（学習対象＝日本語例文）ではここに読み上げ
+                if (!isJa)
+                  _SpeakerButton(
+                    onTap: () =>
+                        TtsService().speakTarget(speakExample, strings.mode),
+                  ),
+              ],
+            ),
             const SizedBox(height: 20),
             Text(
               strings.usageLabel,

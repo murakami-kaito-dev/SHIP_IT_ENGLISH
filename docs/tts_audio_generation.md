@@ -5,12 +5,15 @@
 （完全オフライン・「データ収集なし」申告に影響なし）。同梱が無いテキストは自動で
 端末TTS（flutter_tts）にフォールバックする。
 
-- 声: **nova（US女性・OpenAI）**。モデル `gpt-4o-mini-tts`。
+- 声: **nova（OpenAI・英語/日本語共通）**。モデル `gpt-4o-mini-tts`。
 - 形式: OpenAI から WAV 取得 → macOS標準 `afconvert` で **AAC(.m4a) 48kbps** に圧縮（ffmpeg不要）。
-- 対象: 各カードの `phrase` と `example`（英語）。日本語（enモード）は端末TTSのまま。
+- **2ロケール**（`--locale` で指定）:
+  - `en-US`（既定）: `phrase`/`example`（英語）→ `assets/audio/en-US/`
+  - `ja-JP`: `translation`/`example_translation`（日本語）→ `assets/audio/ja-JP/`
 - 生成: **差分生成**（すでに作った音声は作り直さない）。通信例外・429は自動リトライ。
 
-> 現状: 全 3,826 クリップ生成済み・合計約123MB・`assets/audio/en-US/*.m4a` に同梱。
+> 現状: en-US 3,826件（約124MB）＋ ja-JP 3,822件（約158MB）を同梱済み。
+> 例) 日本語を生成: `dart run tools/generate_tts.dart --locale ja-JP --generate`
 
 ---
 

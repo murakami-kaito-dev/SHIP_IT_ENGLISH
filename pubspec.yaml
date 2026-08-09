@@ -51,6 +51,7 @@ flutter:
     # 事前生成した発音音声（tools/generate_tts.dart が出力）。
     - assets/audio/manifest.json
     - assets/audio/en-US/
+    - assets/audio/ja-JP/
 
 # アプリアイコン生成設定。マスター画像は assets/icon/app_icon.png（2048x2048）。
 # 変更したら `dart run flutter_launcher_icons` を実行して各サイズを再生成する。

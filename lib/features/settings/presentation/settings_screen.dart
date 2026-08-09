@@ -34,32 +34,47 @@ class SettingsScreen extends ConsumerWidget {
         padding: AppTheme.screenPadding,
         children: [
           _SectionHeader(strings.sectionLanguage),
-          // 表示言語 / 学習モード
+          // 学習モード（言語を切り替えると「学ぶ言語」が変わることを明示）
           Container(
             decoration: AppTheme.cardDecoration,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(strings.languageLabel, style: AppTheme.bodyText),
-                ),
-                SegmentedButton<LanguageMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: LanguageMode.ja,
-                      label: Text('日本語'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        strings.languageLabel,
+                        style: AppTheme.bodyText
+                            .copyWith(fontWeight: FontWeight.w700),
+                      ),
                     ),
-                    ButtonSegment(
-                      value: LanguageMode.en,
-                      label: Text('English'),
+                    SegmentedButton<LanguageMode>(
+                      segments: const [
+                        ButtonSegment(
+                          value: LanguageMode.ja,
+                          label: Text('日本語'),
+                        ),
+                        ButtonSegment(
+                          value: LanguageMode.en,
+                          label: Text('English'),
+                        ),
+                      ],
+                      selected: {mode},
+                      onSelectionChanged: (selection) {
+                        ref
+                            .read(languageModeProvider.notifier)
+                            .setMode(selection.first);
+                      },
                     ),
                   ],
-                  selected: {mode},
-                  onSelectionChanged: (selection) {
-                    ref
-                        .read(languageModeProvider.notifier)
-                        .setMode(selection.first);
-                  },
+                ),
+                const SizedBox(height: 10),
+                // 選択中のモードで「何を学ぶか」を説明（ただ表示が変わるだけではない）
+                Text(
+                  strings.languageModeDescription,
+                  style: AppTheme.captionText,
                 ),
               ],
             ),
