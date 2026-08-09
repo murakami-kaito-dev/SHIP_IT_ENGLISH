@@ -20,7 +20,7 @@ class CardFilterBar extends ConsumerWidget {
     final isJa = strings.mode == LanguageMode.ja;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
       decoration: const BoxDecoration(
         color: AppTheme.surface,
         border: Border(
@@ -32,33 +32,68 @@ class CardFilterBar extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.tune, size: 16, color: AppTheme.textSecondary),
-              const SizedBox(width: 6),
+              Container(
+                width: 26,
+                height: 26,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.tune_rounded,
+                    size: 15, color: AppTheme.primary),
+              ),
+              const SizedBox(width: 8),
               Text(
                 strings.filterTitle,
-                style: AppTheme.captionText.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textSecondary,
+                style: AppTheme.bodyText.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
                 ),
               ),
               const Spacer(),
-              if (filter.isActive)
-                TextButton(
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              // 選択数バッジ（何件絞り込み中かひと目で分かる）
+              if (filter.isActive) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryLight,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  onPressed: () => notifier.state = filter.cleared(),
                   child: Text(
-                    strings.filterClear,
-                    style: AppTheme.captionText
-                        .copyWith(color: AppTheme.primary),
+                    '${filter.ratings.length + filter.categories.length}',
+                    style: AppTheme.monoLabel.copyWith(color: AppTheme.primary),
                   ),
                 ),
+                const SizedBox(width: 6),
+                InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => notifier.state = filter.cleared(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.close_rounded,
+                            size: 13, color: AppTheme.primary),
+                        const SizedBox(width: 2),
+                        Text(
+                          strings.filterClear,
+                          style: AppTheme.captionText.copyWith(
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
 
           // 学習状況（忘れた / 曖昧 / 覚えてた / 未学習）
           _FilterRow(
@@ -93,7 +128,7 @@ class CardFilterBar extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
 
           // カテゴリ
           _FilterRow(
@@ -129,16 +164,21 @@ class _FilterRow extends StatelessWidget {
       children: [
         Text(
           label,
-          style: AppTheme.captionText.copyWith(fontSize: 11),
+          style: AppTheme.monoLabel.copyWith(
+            fontSize: 10,
+            color: AppTheme.textTertiary,
+            letterSpacing: 0.6,
+          ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 7),
         SizedBox(
-          height: 32,
+          height: 34,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
             itemCount: children.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 6),
-            itemBuilder: (_, i) => children[i],
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) => Center(child: children[i]),
           ),
         ),
       ],
@@ -161,36 +201,45 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderRadius = BorderRadius.circular(16);
+    final radius = BorderRadius.circular(20);
     return Material(
-      color: selected ? color.withOpacity(0.15) : AppTheme.background,
-      borderRadius: borderRadius,
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: borderRadius,
+        borderRadius: radius,
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+        // 未選択＝そのチップ色をごく薄く敷いた淡色ソフト（枠線なし）
+        // 選択＝ブランド/評価カラーのソリッド＋チェック＋やわらかいグロー
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            borderRadius: borderRadius,
-            border: Border.all(
-              color: selected ? color : AppTheme.surfaceBorder,
-              width: selected ? 1.5 : 1,
-            ),
+            color: selected ? color : color.withOpacity(0.10),
+            borderRadius: radius,
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.32),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (selected) ...[
-                Icon(Icons.check, size: 13, color: color),
-                const SizedBox(width: 3),
+                const Icon(Icons.check_rounded, size: 14, color: Colors.white),
+                const SizedBox(width: 4),
               ],
               Text(
                 label,
                 style: AppTheme.captionText.copyWith(
-                  fontSize: 12,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                  color: selected ? color : AppTheme.textSecondary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : color,
                 ),
               ),
             ],
