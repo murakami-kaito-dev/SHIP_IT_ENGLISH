@@ -15,6 +15,8 @@ class AppConstants {
   static const int defaultNewCardsPerDay = 5;
   static const int minNewCardsPerDay = 1;
   static const int maxNewCardsPerDay = 20;
+  // 「1日の新規カード数」設定でユーザーが指定できる上限
+  static const int maxNewCardsSetting = 100;
   static const int estimatedSecondsPerCard = 30;
 
   // Notification

@@ -7,6 +7,7 @@ import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/shared/widgets/app_background.dart';
+import 'package:ship_it_english/shared/widgets/new_cards_setting.dart';
 
 /// 初回起動時のオンボーディング。
 /// 1ページ目で学習モード（日本語話者/英語話者）を選び、
@@ -66,6 +67,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   _buildLanguagePage(),
                   _buildHowToPage(isJa),
                   _buildSrsPage(isJa),
+                  _buildNewCardsPage(isJa),
                 ],
               ),
             ),
@@ -73,7 +75,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               padding: const EdgeInsets.only(bottom: 24),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (i) {
+                children: List.generate(4, (i) {
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     width: _page == i ? 24 : 8,
@@ -177,8 +179,48 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               ('🔥', 'Study daily to grow your streak'),
               ('⏱', 'Just 5-10 minutes a day'),
             ],
-      buttonLabel: isJa ? '始める' : 'Get Started',
-      onPressed: _finish,
+      buttonLabel: isJa ? '次へ' : 'Next',
+      onPressed: _next,
+    );
+  }
+
+  // === Page 4: 1日の新規カード数（1〜100・あとで設定タブで変更可） ===
+  Widget _buildNewCardsPage(bool isJa) {
+    return Padding(
+      padding: AppTheme.screenPadding,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('🎯',
+              style: TextStyle(fontSize: 56), textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          Text(isJa ? '1日に学ぶ新規カード数' : 'New cards per day',
+              style: AppTheme.headingLarge, textAlign: TextAlign.center),
+          const SizedBox(height: 8),
+          Text(
+            isJa
+                ? '毎日いくつ新しいカードを学ぶか決めましょう（1〜100枚）。あとで設定タブから変更できます。'
+                : 'Choose how many new cards to learn each day (1–100). You can change this later in Settings.',
+            style: AppTheme.bodyText,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 28),
+          Container(
+            decoration: AppTheme.cardDecoration,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: NewCardsSetting(
+              maxValue: AppConstants.maxNewCardsSetting,
+              label: isJa ? '1日の新規カード数' : 'New cards per day',
+            ),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton(
+            onPressed: _finish,
+            child: Text(isJa ? '始める' : 'Get Started'),
+          ),
+        ],
+      ),
     );
   }
 }

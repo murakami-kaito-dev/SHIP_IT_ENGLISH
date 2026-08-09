@@ -13,10 +13,10 @@
 2. 学習済みなら `_TodayCompleteBanner`。
 3. **今日のセッションカード** `_TodaySessionCard`：
    - 「?」ヘルプボタン → `_showSessionHelp`（各要素の意味をボトムシート説明。高さは画面の下2/3に制限）。
-   - **学習範囲セレクタ**（`SegmentedButton<StudyScope>`：新規のみ/復習のみ/両方）。設定に永続化（`settingsProvider.studyScope`・key `study_scope`・既定 both）。選択に応じて新規/復習の行が薄くなり、**合計＝選んだ範囲の枚数**（`sessionTotalLabel`＋`scopedTotal`）・所要時間も連動。
-   - 新規行の値＝「残りX / 上限Y枚」（`newCardsRemainingOfLimit`）。今日学習済みなら補足キャプション。復習行には「（期限が来た分）」の注記。
+   - **学習範囲セレクタ**（`SegmentedButton<StudyScope>`：新規のみ/復習のみ/両方）。設定に永続化（`settingsProvider.studyScope`・key `study_scope`・既定 both）。選択に応じて新規/復習の行が薄くなり、**合計＝選んだ範囲の枚数**（`sessionTotalLabel`＋`scopedTotal`）。所要時間表示は無し。
+   - 新規行の値＝「残りX / 上限Y枚」（`newCardsRemainingOfLimit`）。今日学習済みなら補足キャプション。
    - StudyScope は `loadSession(scope:)` に渡り、reviewOnly=新規除外/newOnly=復習除外（**SRSの予定日サイクルは不変**）。
-   - **1日の新規カード数**の設定：`_NewCardsStepper`（− 直接入力 ＋・**入力即確定** onChanged）＋ `_NewCardsPresets`（5/10/25/50/100/最大）。上限＝総カード数（`overallProgressProvider.totalCount`）。
+   - **1日の新規カード数の設定はここには無い**（設定タブへ移動。[settings.md](settings.md)）。
 4. CTA：`GradientButton`「学習を始める」→`/study`、🎛（範囲指定シート）、「もう一度復習」→`/study?mode=practice`（practiceCardsCount>0時）。
 5. 週間サマリー棒グラフ、全体進捗バー（`studiedCount`基準）。
 6. 全カードmastered時は `_AllMasteredCard`。

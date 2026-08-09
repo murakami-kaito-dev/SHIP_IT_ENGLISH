@@ -414,8 +414,8 @@ class AppStrings {
 
   /// 今日すでに学習した新規カードの補足（残り枠が減る理由の明示）。
   String newCardsStudiedNote(int studied) => mode == LanguageMode.ja
-      ? '今日はすでに新規を$studied枚学習しました（その分だけ残りが減っています）'
-      : 'You\'ve already studied $studied new cards today (so the remaining count is lower).';
+      ? '今日はすでに新規を$studied枚学習しました'
+      : 'You\'ve already studied $studied new cards today.';
 
   /// カレンダーの日別詳細（例:「24枚 学習」/「24 cards」）。
   String historyDayCards(int n) =>

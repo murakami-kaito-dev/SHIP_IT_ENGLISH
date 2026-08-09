@@ -14,6 +14,7 @@ import 'package:ship_it_english/core/services/notification_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
 import 'package:ship_it_english/features/study/data/local_card_repository.dart';
+import 'package:ship_it_english/shared/widgets/new_cards_setting.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -77,6 +78,17 @@ class SettingsScreen extends ConsumerWidget {
                   style: AppTheme.captionText,
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // 学習：1日の新規カード数（1〜100。以前はホームにあった）
+          _SectionHeader(strings.sectionStudy),
+          Container(
+            decoration: AppTheme.cardDecoration,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: const NewCardsSetting(
+              maxValue: AppConstants.maxNewCardsSetting,
             ),
           ),
           const SizedBox(height: 20),

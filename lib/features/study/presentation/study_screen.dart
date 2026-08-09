@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:ship_it_english/core/constants/app_constants.dart';
 import 'package:ship_it_english/core/monetization/entitlement_provider.dart';
 import 'package:ship_it_english/core/monetization/monetization_config.dart';
 import 'package:ship_it_english/core/providers/core_providers.dart';
@@ -92,8 +91,10 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
           random: widget.random,
         );
       } else if (widget.practice) {
+        // 「もう一度復習」＝今日学習したカードを重複なく全部出題（枚数上限なし）。
+        // ボタンの件数（getPracticeCardsCount・全件）と一致させる。
         await notifier.loadPracticeSession(
-          limit: AppConstants.maxNewCardsPerDay,
+          limit: 100000,
           allowedCategories: allowed,
         );
       } else {

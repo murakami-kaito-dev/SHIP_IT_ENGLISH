@@ -4,7 +4,8 @@
 - 役割：言語モード・課金・通知・データ管理・アプリ情報。セクション分割の `ListView`。
 
 ## セクション（上→下）
-1. **言語**：`SegmentedButton<LanguageMode>`（ja/en）。切替で `languageModeProvider.setMode` → UIと学習対象言語が切替。
+1. **学習モード（言語）**：`SegmentedButton<LanguageMode>`（ja/en）＋モード説明。切替で `languageModeProvider.setMode` → UIと学習対象言語が切替。
+1b. **学習：1日の新規カード数**（`sectionStudy`）：`NewCardsSetting`（1〜`AppConstants.maxNewCardsSetting`=100・ステッパー＋プリセット＋直接入力）。以前はホームにあったが設定タブへ移動。オンボーディングと同じ共通ウィジェット。
 2. **ShipIt Pro**（休眠中は導線が実質無効/非表示になりうる）：
    - ステータス（Free/Active）。Free時「Proにアップグレード」→`/paywall`。
    - Pro時「サブスク管理」（`manageSubscriptionsUrl`）／「購入を復元」（`purchaseService.restore`）。

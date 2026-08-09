@@ -1,13 +1,8 @@
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:ship_it_english/core/constants/app_constants.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
-import 'package:ship_it_english/core/monetization/entitlement_provider.dart';
-import 'package:ship_it_english/core/monetization/monetization_config.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/home/providers/home_providers.dart';
@@ -234,27 +229,15 @@ class _TodaySessionCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 新規カード数の設定は「今日のセッション」のすぐ近くで調整できるようにする
-    // （以前は設定タブにあり、新規の枚数表示と別タブで分かりにくかった）
     final settings = ref.watch(settingsProvider);
-    final isPro = ref.watch(isProProvider);
-    // 新規カード数の上限＝カードの総数（読込中は現在値以上を暫定上限に）
-    final totalCards = ref.watch(overallProgressProvider).maybeWhen(
-          data: (p) => p.totalCount,
-          orElse: () => math.max(
-            settings.newCardsPerDay,
-            AppConstants.maxNewCardsPerDay,
-          ),
-        );
 
-    // 学習範囲（新規のみ/復習のみ/両方）に応じて合計・所要時間を出し分ける
+    // 学習範囲（新規のみ/復習のみ/両方）に応じて合計枚数を出し分ける
     final scope = settings.studyScope;
     final scopedTotal = switch (scope) {
       StudyScope.newOnly => info.newCardsCount,
       StudyScope.reviewOnly => info.reviewCardsCount,
       StudyScope.both => info.totalCount,
     };
-    final scopedSeconds = scopedTotal * AppConstants.estimatedSecondsPerCard;
 
     return Container(
       width: double.infinity,
@@ -341,60 +324,22 @@ class _TodaySessionCard extends ConsumerWidget {
             ),
           ),
           const Divider(height: 22),
-          // 合計（＝選んだ範囲の枚数）と所要時間
+          // 合計（＝選んだ範囲の枚数）
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(strings.sessionTotalLabel, style: AppTheme.bodyText),
-                  const SizedBox(width: 8),
-                  Text(
-                    strings.cardsCount(scopedTotal),
-                    style: AppTheme.monoNumberLarge.copyWith(
-                      color: AppTheme.primary,
-                      fontSize: 22,
-                    ),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.schedule_rounded,
-                    size: 16,
-                    color: AppTheme.textTertiary,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    strings.estimatedTime(scopedSeconds),
-                    style: AppTheme.bodyText,
-                  ),
-                ],
+              Text(strings.sessionTotalLabel, style: AppTheme.bodyText),
+              const SizedBox(width: 8),
+              Text(
+                strings.cardsCount(scopedTotal),
+                style: AppTheme.monoNumberLarge.copyWith(
+                  color: AppTheme.primary,
+                  fontSize: 22,
+                ),
               ),
             ],
           ),
-          const Divider(height: 20),
-          // 新規カード数の設定（1〜総カード数を直接入力／±／プリセットで指定）
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(strings.newCardsOnHome, style: AppTheme.bodyText),
-              ),
-              const SizedBox(width: 12),
-              _NewCardsStepper(maxValue: totalCards),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _NewCardsPresets(maxValue: totalCards, strings: strings),
-          if (!isPro) ...[
-            const SizedBox(height: 8),
-            Text(strings.proSliderHint, style: AppTheme.captionText),
-          ],
         ],
       ),
     );
@@ -485,254 +430,6 @@ void _showSessionHelp(BuildContext context, AppStrings strings) {
       );
     },
   );
-}
-
-/// 新規カード数を「− [直接入力] ＋」で 1〜[maxValue] の範囲で指定するステッパー。
-/// 上限が大きい（総カード数＝最大1500枚）ためスライダーをやめ、数値入力にした。
-class _NewCardsStepper extends ConsumerStatefulWidget {
-  final int maxValue;
-
-  const _NewCardsStepper({required this.maxValue});
-
-  @override
-  ConsumerState<_NewCardsStepper> createState() => _NewCardsStepperState();
-}
-
-class _NewCardsStepperState extends ConsumerState<_NewCardsStepper> {
-  late final TextEditingController _controller;
-  final FocusNode _focus = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _controller =
-        TextEditingController(text: '${ref.read(settingsProvider).newCardsPerDay}');
-    // フォーカスが外れたら入力を確定・整形する
-    _focus.addListener(() {
-      if (!_focus.hasFocus) _commitText();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  int get _min => AppConstants.minNewCardsPerDay;
-  int get _max => math.max(_min, widget.maxValue);
-
-  /// 表示テキストを value に合わせる（カーソルは末尾）
-  void _syncText(int value) {
-    final text = '$value';
-    if (_controller.text != text) {
-      _controller.value = TextEditingValue(
-        text: text,
-        selection: TextSelection.collapsed(offset: text.length),
-      );
-    }
-  }
-
-  /// 値を確定する。範囲外はクランプし、無料プランの上限超過はパウォールへ誘導。
-  void _apply(int value) {
-    final notifier = ref.read(settingsProvider.notifier);
-    final isPro = ref.read(isProProvider);
-    var target = value.clamp(_min, _max);
-
-    if (!isPro && target > MonetizationConfig.freeMaxNewCardsPerDay) {
-      target = MonetizationConfig.freeMaxNewCardsPerDay;
-      notifier.setNewCardsPerDay(target);
-      _syncText(target);
-      context.push('/paywall');
-      return;
-    }
-    notifier.setNewCardsPerDay(target);
-    _syncText(target);
-  }
-
-  /// 入力するそばから即座に確定する（別の場所をタップしなくても反映される）。
-  /// 入力中はテキストを書き換えず（カーソル位置を保つ）、範囲内にクランプした
-  /// 値だけを保存する。空・パース不能なら何もしない（前の値を保持）。
-  void _liveApply(String text) {
-    final parsed = int.tryParse(text.trim());
-    if (parsed == null) return;
-    final clamped = parsed.clamp(_min, _max);
-    ref.read(settingsProvider.notifier).setNewCardsPerDay(clamped);
-  }
-
-  void _commitText() {
-    final parsed = int.tryParse(_controller.text.trim());
-    _apply(parsed ?? ref.read(settingsProvider).newCardsPerDay);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final current = ref.watch(settingsProvider).newCardsPerDay;
-    // ステッパー/プリセットなど外部要因で値が変わったらテキストも追従
-    // （入力中＝フォーカス時は勝手に書き換えない）
-    if (!_focus.hasFocus) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_focus.hasFocus) _syncText(current);
-      });
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _StepButton(
-          icon: Icons.remove_rounded,
-          onTap: current > _min ? () => _apply(current - 1) : null,
-        ),
-        SizedBox(
-          width: 64,
-          child: TextField(
-            controller: _controller,
-            focusNode: _focus,
-            textAlign: TextAlign.center,
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.done,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: AppTheme.monoNumber.copyWith(color: AppTheme.primary),
-            decoration: const InputDecoration(
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(vertical: 8),
-              border: OutlineInputBorder(),
-            ),
-            // 入力するそばから即確定（キーボードの「完了」でも確定）
-            onChanged: _liveApply,
-            onSubmitted: (_) => _commitText(),
-            onTapOutside: (_) => _focus.unfocus(),
-          ),
-        ),
-        _StepButton(
-          icon: Icons.add_rounded,
-          onTap: current < _max ? () => _apply(current + 1) : null,
-        ),
-      ],
-    );
-  }
-}
-
-/// ステッパーの ± ボタン（丸型・無効時はグレー）
-class _StepButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  const _StepButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onTap != null;
-    return Material(
-      color: enabled ? AppTheme.primaryLight : AppTheme.background,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap == null
-            ? null
-            : () {
-                HapticFeedback.selectionClick();
-                onTap!();
-              },
-        child: SizedBox(
-          width: 36,
-          height: 36,
-          child: Icon(
-            icon,
-            size: 20,
-            color: enabled ? AppTheme.primary : AppTheme.textTertiary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// よく使う枚数をワンタップで選べるプリセット。最大は総カード数。
-class _NewCardsPresets extends ConsumerWidget {
-  final int maxValue;
-  final AppStrings strings;
-
-  const _NewCardsPresets({required this.maxValue, required this.strings});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final current = ref.watch(settingsProvider).newCardsPerDay;
-    final isPro = ref.watch(isProProvider);
-
-    void select(int value) {
-      final target = value.clamp(AppConstants.minNewCardsPerDay, maxValue);
-      if (!isPro && target > MonetizationConfig.freeMaxNewCardsPerDay) {
-        ref
-            .read(settingsProvider.notifier)
-            .setNewCardsPerDay(MonetizationConfig.freeMaxNewCardsPerDay);
-        context.push('/paywall');
-        return;
-      }
-      ref.read(settingsProvider.notifier).setNewCardsPerDay(target);
-    }
-
-    // 最大値を超えるプリセットは出さない。末尾に「最大」を必ず付ける。
-    final presets = [5, 10, 25, 50, 100]
-        .where((v) => v < maxValue)
-        .toList();
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final v in presets)
-          _PresetChip(
-            label: '$v',
-            selected: current == v,
-            onTap: () => select(v),
-          ),
-        _PresetChip(
-          label: '${strings.newCardsMaxLabel} ($maxValue)',
-          selected: current >= maxValue,
-          onTap: () => select(maxValue),
-        ),
-      ],
-    );
-  }
-}
-
-class _PresetChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _PresetChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? AppTheme.primary : AppTheme.primaryLight,
-      borderRadius: BorderRadius.circular(10),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Text(
-            label,
-            style: AppTheme.monoLabel.copyWith(
-              color: selected ? Colors.white : AppTheme.primary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// その日の学習を一度終えたことを示すバナー。
