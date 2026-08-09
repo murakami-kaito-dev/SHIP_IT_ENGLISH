@@ -10,17 +10,16 @@
 
 ## レイアウト（上→下）
 1. ヘッダー：`StreakWidget`（🔥 breathing・今日の目標`GamificationConfig.dailyGoalCards`達成で強発光＋チェック。タップ→`/history`）＋ 今日の日付。
-2. 学習済みなら `_TodayCompleteBanner`。
-3. **今日のセッションカード** `_TodaySessionCard`：
-   - 「?」ヘルプボタン → `_showSessionHelp`（各要素の意味をボトムシート説明。高さは画面の下2/3に制限）。
+2. **今日のセッションカード** `_TodaySessionCard`（**タイトル・完了マーク・各行・合計・CTAを1枚の白カード内に集約**）：
+   - タイトル行：「今日のセッション」＋（今日学習済みなら）タイトル横に小さな完了チップ `_SessionDoneChip`（`sessionDoneChip`＝「完了」・以前の大きな緑バナー `_TodayCompleteBanner` は廃止）＋ 右端に「?」ヘルプボタン → `_showSessionHelp`（各要素の意味をボトムシート説明。高さは画面の下2/3に制限）。
    - **学習範囲セレクタ**（`SegmentedButton<StudyScope>`：新規のみ/復習のみ/両方）。設定に永続化（`settingsProvider.studyScope`・key `study_scope`・既定 both）。選択に応じて新規/復習の行が薄くなり、**合計＝選んだ範囲の枚数**（`sessionTotalLabel`＋`scopedTotal`）。所要時間表示は無し。
    - 新規行の値＝「残りX / 上限Y枚」（`newCardsRemainingOfLimit`）。今日学習済みなら補足キャプション。
    - StudyScope は `loadSession(scope:)` に渡り、reviewOnly=新規除外/newOnly=復習除外（**SRSの予定日サイクルは不変**）。
    - **1日の新規カード数の設定はここには無い**（設定タブへ移動。[settings.md](settings.md)）。
-4. CTA：`GradientButton`「学習を始める」→`/study`、🎛（範囲指定シート）、「もう一度復習」→`/study?mode=practice`（practiceCardsCount>0時）。
-5. **`_LevelCard`（経験値/レベル）**：`gamificationProvider.snapshot` を watch。通算XP（`totalXpValue`）＋ `XPProgressBar`（LVバッジ＋ゲージ）＋ 次LVまでの残りXP（`xpToNext`）。**獲得経験値を確認できる常設の場所**。XPは起動時に `keyTotalXp` から復元される（[systems/gamification.md](../systems/gamification.md)）。
-6. 週間サマリー棒グラフ、全体進捗バー（`studiedCount`基準）。
-7. 全カードmastered時は `_AllMasteredCard`。
+   - **CTA もカード内下部**：`GradientButton`「学習を始める」→`/study`、🎛（範囲指定シート `showRangeStudySheet`）、「もう一度復習」→`/study?mode=practice`（practiceCardsCount>0時のみ活性）。
+   - 全カードmastered時のみ、このカードの代わりに `_AllMasteredCard` を表示。
+3. **`_LevelCard`（経験値/レベル）**：`gamificationProvider.snapshot` を watch。通算XP（`totalXpValue`）＋ `XPProgressBar`（LVバッジ＋ゲージ）＋ 次LVまでの残りXP（`xpToNext`）。**獲得経験値を確認できる常設の場所**。XPは起動時に `keyTotalXp` から復元される（[systems/gamification.md](../systems/gamification.md)）。
+4. 週間サマリー棒グラフ、全体進捗バー（`studiedCount`基準）。
 
 ## 重要な仕様
 - **今日の残り新規枠 = 1日の上限 − 今日学習した新規（daily_stats.new_cards）**。途中でやめて再開しても満タンに戻らない（0/40→3枚やって0/37）。日付が変わると上限にリセット。

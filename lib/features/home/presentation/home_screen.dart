@@ -139,51 +139,11 @@ class HomeScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 20),
-        if (allMastered) ...[
-          _AllMasteredCard(strings: strings),
-        ] else ...[
-          // その日の学習が済んでいても完了メッセージを出すだけで、
-          // 「学習を始める」は常に表示する（続けて学習できるように）
-          if (info.hasStudiedToday) ...[
-            _TodayCompleteBanner(strings: strings),
-            const SizedBox(height: 12),
-          ],
+        if (allMastered)
+          _AllMasteredCard(strings: strings)
+        else
+          // 完了マーク・各行・合計・操作ボタンをすべて白カード内にまとめる
           _TodaySessionCard(info: info, strings: strings),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: GradientButton(
-                  // 新規カードを設定枚数だけ出題する通常セッション
-                  label: strings.startLearning,
-                  icon: Icons.play_arrow_rounded,
-                  onPressed:
-                      info.totalCount > 0 ? () => context.push('/study') : null,
-                ),
-              ),
-              const SizedBox(width: 10),
-              // カテゴリと番号範囲を指定して学習する（範囲フィルタ）
-              OutlinedButton(
-                onPressed: () => showRangeStudySheet(context),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(56, AppTheme.buttonHeight),
-                ),
-                child: const Icon(Icons.tune_rounded),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            // 今日学習したカードだけをもう一度出題する
-            onPressed: info.practiceCardsCount > 0
-                ? () => context.push('/study?mode=practice')
-                : null,
-            icon: const Icon(Icons.refresh_rounded),
-            label: Text(
-              '${strings.reviewAgain} (${info.practiceCardsCount})',
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -305,9 +265,14 @@ class _TodaySessionCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(strings.todaysSession, style: AppTheme.headingMedium),
+              // 今日の学習が済んでいたら、タイトル横の余白に小さく完了を示す
+              if (info.hasStudiedToday) ...[
+                const SizedBox(width: 10),
+                _SessionDoneChip(label: strings.sessionDoneChip),
+              ],
+              const Spacer(),
               // 仕様がわかりにくいので「?」でヘルプを開けるようにする
               IconButton(
                 icon: const Icon(Icons.help_outline_rounded, size: 20),
@@ -397,6 +362,78 @@ class _TodaySessionCard extends ConsumerWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          // 操作ボタン群もこのカード内にまとめる（学習を始める / 範囲指定 / もう一度復習）
+          Row(
+            children: [
+              Expanded(
+                child: GradientButton(
+                  // 新規カードを設定枚数だけ出題する通常セッション
+                  label: strings.startLearning,
+                  icon: Icons.play_arrow_rounded,
+                  onPressed:
+                      info.totalCount > 0 ? () => context.push('/study') : null,
+                ),
+              ),
+              const SizedBox(width: 10),
+              // カテゴリと番号範囲を指定して学習する（範囲フィルタ）
+              OutlinedButton(
+                onPressed: () => showRangeStudySheet(context),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(56, AppTheme.buttonHeight),
+                ),
+                child: const Icon(Icons.tune_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              // 今日学習したカードだけをもう一度出題する
+              onPressed: info.practiceCardsCount > 0
+                  ? () => context.push('/study?mode=practice')
+                  : null,
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(
+                '${strings.reviewAgain} (${info.practiceCardsCount})',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 「今日のセッション」タイトル横に置く小さな完了マーク。
+/// 以前は大きな緑バナーで別枠表示していたが、控えめにカード内へ収めた。
+class _SessionDoneChip extends StatelessWidget {
+  final String label;
+  const _SessionDoneChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppTheme.ratingRemembered.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.check_circle_rounded,
+              size: 13, color: AppTheme.ratingRemembered),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: AppTheme.captionText.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.ratingRemembered,
+            ),
           ),
         ],
       ),
@@ -488,44 +525,6 @@ void _showSessionHelp(BuildContext context, AppStrings strings) {
       );
     },
   );
-}
-
-/// その日の学習を一度終えたことを示すバナー。
-/// 以前はこれが学習ボタンを置き換えていたが、続けて学習できるよう
-/// 表示のみに変更した。
-class _TodayCompleteBanner extends StatelessWidget {
-  final AppStrings strings;
-
-  const _TodayCompleteBanner({required this.strings});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.ratingRemembered.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
-        border: Border.all(color: AppTheme.ratingRemembered.withOpacity(0.5)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle_rounded,
-              color: AppTheme.ratingRemembered, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              strings.sessionCompleteToday,
-              style: AppTheme.bodyText.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppTheme.ratingRemembered,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _AllMasteredCard extends StatelessWidget {

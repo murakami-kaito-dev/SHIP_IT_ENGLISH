@@ -366,6 +366,9 @@ class AppStrings {
       ? 'うち習得済み $mastered'
       : '$mastered mastered';
 
+  /// 「今日のセッション」タイトル横に出す小さな完了マークの文言。
+  String get sessionDoneChip => mode == LanguageMode.ja ? '完了' : 'Done';
+
   // --- レベル / 経験値（ゲーミフィケーション） ---
   String get levelTitle => mode == LanguageMode.ja ? 'レベル' : 'Level';
 
