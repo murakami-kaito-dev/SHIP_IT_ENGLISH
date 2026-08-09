@@ -145,6 +145,17 @@ class AudioClipService {
     } catch (_) {}
   }
 
+  /// 再生位置・長さ（耳学の秒単位シークバー用）。現在鳴っているクリップに対応。
+  Stream<Duration> get onPositionChanged => _player.onPositionChanged;
+  Stream<Duration> get onDurationChanged => _player.onDurationChanged;
+
+  /// 現在のクリップ内の位置へシークする（秒単位）。
+  Future<void> seek(Duration position) async {
+    try {
+      await _player.seek(position);
+    } catch (_) {}
+  }
+
   Future<void> stop() async {
     // 待機中の playAndWait を解いて次へ進めるようにする
     final wait = _activeWait;

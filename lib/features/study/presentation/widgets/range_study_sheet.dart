@@ -1,7 +1,4 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
@@ -10,6 +7,7 @@ import 'package:ship_it_english/core/monetization/monetization_config.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/categories/providers/categories_providers.dart';
+import 'package:ship_it_english/shared/widgets/number_stepper.dart';
 
 /// 範囲指定シートのモード。学習か、耳学（リスニング）か。
 /// 中身（カテゴリ・範囲・状況・順序）は共通で、最終ボタンと遷移先だけが変わる。
@@ -346,10 +344,10 @@ class _StartSectionState extends ConsumerState<_StartSection> {
   }
 }
 
-/// 番号範囲を「最小」「最大」それぞれのステッパー（− 直接入力 ＋）で指定する。
-/// 横のツマミ（RangeSlider）の微調整をやめ、端点を直接指定できるようにした。
+/// 番号範囲を「最小」「最大」それぞれのステッパー（上に入力欄・下に − / ＋）で指定。
 /// 最小は最大を超えず、最大は総数[maxNumber]を超えない（相互にクランプ）。
-class _RangeMinMaxSelector extends StatefulWidget {
+/// − / ＋ は長押しで加速（`NumberStepper` 共通実装）。
+class _RangeMinMaxSelector extends StatelessWidget {
   final int start;
   final int end;
   final int maxNumber;
@@ -365,209 +363,36 @@ class _RangeMinMaxSelector extends StatefulWidget {
   });
 
   @override
-  State<_RangeMinMaxSelector> createState() => _RangeMinMaxSelectorState();
-}
-
-class _RangeMinMaxSelectorState extends State<_RangeMinMaxSelector> {
-  late final TextEditingController _minCtrl =
-      TextEditingController(text: '${widget.start}');
-  late final TextEditingController _maxCtrl =
-      TextEditingController(text: '${widget.end}');
-  final _minFocus = FocusNode();
-  final _maxFocus = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    // フォーカスを外したら、実際に採用された値へテキストを揃える（範囲外入力の是正）
-    _minFocus.addListener(() {
-      if (!_minFocus.hasFocus) _minCtrl.text = '${widget.start}';
-    });
-    _maxFocus.addListener(() {
-      if (!_maxFocus.hasFocus) _maxCtrl.text = '${widget.end}';
-    });
-  }
-
-  @override
-  void didUpdateWidget(covariant _RangeMinMaxSelector old) {
-    super.didUpdateWidget(old);
-    // 外部要因（カテゴリ変更・±・相互クランプ）で値が変わったら反映。
-    // 入力中（フォーカス時）はカーソルを保つため触らない。
-    if (!_minFocus.hasFocus && widget.start != old.start) {
-      _minCtrl.text = '${widget.start}';
-    }
-    if (!_maxFocus.hasFocus && widget.end != old.end) {
-      _maxCtrl.text = '${widget.end}';
-    }
-  }
-
-  @override
-  void dispose() {
-    _minCtrl.dispose();
-    _maxCtrl.dispose();
-    _minFocus.dispose();
-    _maxFocus.dispose();
-    super.dispose();
-  }
-
-  void _setMin(int v) =>
-      widget.onChanged(RangeValues(v.clamp(1, widget.end).toDouble(),
-          widget.end.toDouble()));
-  void _setMax(int v) => widget.onChanged(RangeValues(widget.start.toDouble(),
-      v.clamp(widget.start, widget.maxNumber).toDouble()));
-
-  @override
   Widget build(BuildContext context) {
-    final s = widget.strings;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: _stepper(
-            label: s.rangeMin,
-            controller: _minCtrl,
-            focus: _minFocus,
-            onMinus: widget.start > 1 ? () => _setMin(widget.start - 1) : null,
-            onPlus:
-                widget.start < widget.end ? () => _setMin(widget.start + 1) : null,
-            onChanged: (t) {
-              final n = int.tryParse(t.trim());
-              if (n != null) _setMin(n);
-            },
+          child: NumberStepper(
+            label: '${strings.rangeMin} #',
+            value: start,
+            min: 1,
+            max: end,
+            onChanged: (v) => onChanged(
+                RangeValues(v.clamp(1, end).toDouble(), end.toDouble())),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.only(top: 30, left: 8, right: 8),
           child: Text('〜',
               style: AppTheme.bodyText.copyWith(color: AppTheme.textTertiary)),
         ),
         Expanded(
-          child: _stepper(
-            label: s.rangeMax,
-            controller: _maxCtrl,
-            focus: _maxFocus,
-            onMinus:
-                widget.end > widget.start ? () => _setMax(widget.end - 1) : null,
-            onPlus: widget.end < widget.maxNumber
-                ? () => _setMax(widget.end + 1)
-                : null,
-            onChanged: (t) {
-              final n = int.tryParse(t.trim());
-              if (n != null) _setMax(n);
-            },
+          child: NumberStepper(
+            label: '${strings.rangeMax} #',
+            value: end,
+            min: start,
+            max: maxNumber,
+            onChanged: (v) => onChanged(RangeValues(
+                start.toDouble(), v.clamp(start, maxNumber).toDouble())),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _stepper({
-    required String label,
-    required TextEditingController controller,
-    required FocusNode focus,
-    required VoidCallback? onMinus,
-    required VoidCallback? onPlus,
-    required ValueChanged<String> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('$label #',
-            style: AppTheme.captionText.copyWith(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            _StepButton(icon: Icons.remove_rounded, onTap: onMinus),
-            Expanded(
-              child: TextField(
-                controller: controller,
-                focusNode: focus,
-                textAlign: TextAlign.center,
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.done,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                style: AppTheme.monoNumber.copyWith(color: AppTheme.primary),
-                decoration: const InputDecoration(
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(vertical: 8),
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: onChanged,
-                onTapOutside: (_) => focus.unfocus(),
-              ),
-            ),
-            _StepButton(icon: Icons.add_rounded, onTap: onPlus),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// ステッパーの ± 丸ボタン（無効時はグレーで押せない）。
-/// **押しっぱなしで加速して連続増減**する（ちまちま連打しなくてよい）。
-class _StepButton extends StatefulWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-  const _StepButton({required this.icon, required this.onTap});
-
-  @override
-  State<_StepButton> createState() => _StepButtonState();
-}
-
-class _StepButtonState extends State<_StepButton> {
-  Timer? _timer;
-  int _repeats = 0;
-
-  void _start() {
-    if (widget.onTap == null) return;
-    widget.onTap!(); // 即時1回
-    _repeats = 0;
-    _scheduleNext();
-  }
-
-  void _scheduleNext() {
-    // 初回は少し待ち、その後は押し続けるほど間隔を詰めて加速する
-    final ms = _repeats == 0 ? 400 : (260 - _repeats * 24).clamp(35, 260);
-    _timer = Timer(Duration(milliseconds: ms), () {
-      if (!mounted || widget.onTap == null) {
-        _stop();
-        return;
-      }
-      widget.onTap!();
-      _repeats++;
-      _scheduleNext();
-    });
-  }
-
-  void _stop() {
-    _timer?.cancel();
-    _timer = null;
-  }
-
-  @override
-  void dispose() {
-    _stop();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = widget.onTap != null;
-    return GestureDetector(
-      onTapDown: enabled ? (_) => _start() : null,
-      onTapUp: (_) => _stop(),
-      onTapCancel: _stop,
-      child: Material(
-        color: enabled ? AppTheme.primaryLight : AppTheme.surfaceBorder,
-        shape: const CircleBorder(),
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Icon(widget.icon,
-              size: 20,
-              color: enabled ? AppTheme.primary : AppTheme.textTertiary),
-        ),
-      ),
     );
   }
 }

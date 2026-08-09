@@ -12,6 +12,11 @@ import MediaPlayer
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
 
+    // super を先に呼んで window / rootViewController を確定させてから設定する
+    // （before だと rootViewController が nil でチャンネルが張れず、ロック画面に出ない）
+    let didFinish = super.application(
+      application, didFinishLaunchingWithOptions: launchOptions)
+
     // 耳学（リスニング）のロック画面/コントロールセンター表示・操作。
     if let controller = window?.rootViewController as? FlutterViewController {
       let channel = FlutterMethodChannel(
@@ -33,9 +38,11 @@ import MediaPlayer
         }
       }
       setupRemoteCommands(channel)
+      // リモート操作イベントを受け取り始める
+      UIApplication.shared.beginReceivingRemoteControlEvents()
     }
 
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    return didFinish
   }
 
   /// ロック画面/コントロールセンターの再生情報を更新する。

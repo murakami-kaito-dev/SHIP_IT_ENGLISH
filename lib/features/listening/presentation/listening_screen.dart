@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
+import 'package:ship_it_english/core/services/audio_clip_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/listening/domain/listening_state.dart';
 import 'package:ship_it_english/features/listening/providers/listening_providers.dart';
@@ -129,8 +132,7 @@ class _ListeningScreenState extends ConsumerState<ListeningScreen> {
       ListeningController controller, int i) {
     final card = st.queue[i];
     final isCurrent = i == st.index;
-    final title =
-        st.mode == LanguageMode.ja ? card.phrase : card.translation;
+    final title = st.mode == LanguageMode.ja ? card.phrase : card.translation;
     final subtitle =
         st.mode == LanguageMode.ja ? card.translation : card.phrase;
     return Material(
@@ -214,16 +216,17 @@ class _PlayerBody extends StatelessWidget {
           const SizedBox(height: 12),
           Expanded(
             child: SingleChildScrollView(
-              child: _NowCard(card: card, lines: lines, activeLine: st.line),
+              child: _NowCard(
+                card: card,
+                lines: lines,
+                activeLine: st.line,
+                onTapLine: controller.seekToLine,
+              ),
             ),
           ),
           const SizedBox(height: 12),
-          // シークバー（このカード内のどの行から流すか。つまみで位置調整）
-          _SeekBar(
-            position: st.line,
-            count: lines.length,
-            onSeek: controller.seekToLine,
-          ),
+          // 秒単位シークバー（今鳴っている音声内を左右にスライドしてその位置から再生）
+          const _SeekBar(),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -280,29 +283,52 @@ class _PlayerBody extends StatelessWidget {
   }
 }
 
-/// このカード内の再生位置（どの行から流すか）を表すシークバー。
-/// つまみをドラッグして離すと、その行から再生し直す（カードは移動しない）。
+/// 今鳴っている音声（現在の行のクリップ）の**秒単位**シークバー。
+/// つまみを左右にドラッグして離すと、その秒位置から再生し直す。
 class _SeekBar extends StatefulWidget {
-  final int position; // 現在の行 0..count-1
-  final int count; // このカードの行数（=4）
-  final ValueChanged<int> onSeek;
-  const _SeekBar(
-      {required this.position, required this.count, required this.onSeek});
+  const _SeekBar();
 
   @override
   State<_SeekBar> createState() => _SeekBarState();
 }
 
 class _SeekBarState extends State<_SeekBar> {
-  double? _drag; // ドラッグ中の一時値（離すまで再生位置は動かさない）
+  final _clip = AudioClipService();
+  Duration _pos = Duration.zero;
+  Duration _dur = Duration.zero;
+  double? _drag; // ドラッグ中の一時値（ミリ秒）
+  StreamSubscription<Duration>? _posSub;
+  StreamSubscription<Duration>? _durSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _posSub = _clip.onPositionChanged.listen((d) {
+      if (mounted && _drag == null) setState(() => _pos = d);
+    });
+    _durSub = _clip.onDurationChanged.listen((d) {
+      if (mounted) setState(() => _dur = d);
+    });
+  }
+
+  @override
+  void dispose() {
+    _posSub?.cancel();
+    _durSub?.cancel();
+    super.dispose();
+  }
+
+  String _fmt(Duration d) {
+    final s = d.inSeconds;
+    return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final total = widget.count;
-    final maxV = (total - 1).toDouble();
-    final value =
-        (_drag ?? widget.position.toDouble()).clamp(0.0, maxV < 0 ? 0.0 : maxV);
-    final shown = value.round() + 1;
+    final totalMs = _dur.inMilliseconds;
+    final hasClip = totalMs > 0;
+    final posMs = (_drag ?? _pos.inMilliseconds.toDouble())
+        .clamp(0.0, totalMs.toDouble());
 
     return Column(
       children: [
@@ -312,23 +338,23 @@ class _SeekBarState extends State<_SeekBar> {
             activeTrackColor: AppTheme.primary,
             inactiveTrackColor: AppTheme.surfaceBorder,
             thumbColor: AppTheme.primary,
-            overlayShape:
-                const RoundSliderOverlayShape(overlayRadius: 16),
-            thumbShape:
-                const RoundSliderThumbShape(enabledThumbRadius: 8),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
           ),
           child: Slider(
-            value: value,
+            value: hasClip ? posMs : 0,
             min: 0,
-            max: maxV <= 0 ? 1 : maxV,
-            divisions: total > 1 ? total - 1 : null,
-            onChanged: total > 1
-                ? (v) => setState(() => _drag = v)
+            max: hasClip ? totalMs.toDouble() : 1,
+            onChanged: hasClip ? (v) => setState(() => _drag = v) : null,
+            onChangeEnd: hasClip
+                ? (v) {
+                    _clip.seek(Duration(milliseconds: v.round()));
+                    setState(() {
+                      _pos = Duration(milliseconds: v.round());
+                      _drag = null;
+                    });
+                  }
                 : null,
-            onChangeEnd: (v) {
-              widget.onSeek(v.round());
-              setState(() => _drag = null);
-            },
           ),
         ),
         Padding(
@@ -336,8 +362,9 @@ class _SeekBarState extends State<_SeekBar> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('$shown', style: AppTheme.monoLabel),
-              Text('$total', style: AppTheme.monoLabel),
+              Text(_fmt(Duration(milliseconds: posMs.round())),
+                  style: AppTheme.monoLabel),
+              Text(_fmt(_dur), style: AppTheme.monoLabel),
             ],
           ),
         ),
@@ -376,12 +403,17 @@ class _QueueHeader extends StatelessWidget {
 }
 
 /// 再生中のカード（カテゴリ番号＋4行）。再生中の行を強調表示する。
+/// 行をタップするとその行の頭から再生する（[onTapLine]）。
 class _NowCard extends StatelessWidget {
   final TechCard card;
   final List<SpeechLine> lines;
   final int activeLine;
+  final ValueChanged<int> onTapLine;
   const _NowCard(
-      {required this.card, required this.lines, required this.activeLine});
+      {required this.card,
+      required this.lines,
+      required this.activeLine,
+      required this.onTapLine});
 
   @override
   Widget build(BuildContext context) {
@@ -408,7 +440,11 @@ class _NowCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           for (var i = 0; i < lines.length; i++)
-            _LineRow(line: lines[i], active: i == activeLine),
+            _LineRow(
+              line: lines[i],
+              active: i == activeLine,
+              onTap: () => onTapLine(i),
+            ),
         ],
       ),
     );
@@ -418,64 +454,69 @@ class _NowCard extends StatelessWidget {
 class _LineRow extends StatelessWidget {
   final SpeechLine line;
   final bool active;
-  const _LineRow({required this.line, required this.active});
+  final VoidCallback onTap;
+  const _LineRow(
+      {required this.line, required this.active, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final isEn = line.locale == 'en-US';
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: active ? Colors.white.withOpacity(0.22) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-        border: active
-            ? Border.all(color: Colors.white.withOpacity(0.55), width: 1.5)
-            : null,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 2),
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: Text(
-              isEn ? 'EN' : 'JP',
-              style: const TextStyle(
-                fontFamily: AppTheme.monoFont,
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
-                color: Colors.white,
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? Colors.white.withOpacity(0.22) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: active
+              ? Border.all(color: Colors.white.withOpacity(0.55), width: 1.5)
+              : null,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Text(
+                isEn ? 'EN' : 'JP',
+                style: const TextStyle(
+                  fontFamily: AppTheme.monoFont,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                  color: Colors.white,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              line.text,
-              style: TextStyle(
-                fontSize: 15,
-                height: 1.4,
-                color: Colors.white,
-                fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                line.text,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.4,
+                  color: Colors.white,
+                  fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+                ),
               ),
             ),
-          ),
-          if (active) ...[
-            const SizedBox(width: 6),
-            const Padding(
-              padding: EdgeInsets.only(top: 2),
-              child:
-                  Icon(Icons.graphic_eq_rounded, size: 16, color: Colors.white),
-            ),
+            if (active) ...[
+              const SizedBox(width: 6),
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(Icons.graphic_eq_rounded,
+                    size: 16, color: Colors.white),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -533,8 +574,7 @@ class _RepeatToggle extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.repeat_rounded,
-                size: 16,
-                color: on ? AppTheme.primary : AppTheme.textTertiary),
+                size: 16, color: on ? AppTheme.primary : AppTheme.textTertiary),
             const SizedBox(width: 6),
             Text(
               label,
@@ -571,8 +611,7 @@ class _SpeedSelector extends StatelessWidget {
               onTap: () => onSelect(s),
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 1),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(
                   color: s == speed ? AppTheme.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
