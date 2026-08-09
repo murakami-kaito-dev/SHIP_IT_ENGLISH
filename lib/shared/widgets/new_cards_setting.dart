@@ -50,14 +50,16 @@ class NewCardsSetting extends ConsumerWidget {
       children: [
         Text(label ?? strings.newCardsOnHome, style: AppTheme.bodyText),
         const SizedBox(height: 12),
-        // 入力欄が上・−/＋が下（長押し加速）
-        SizedBox(
-          width: 150,
-          child: NumberStepper(
-            value: current,
-            min: min,
-            max: effMax,
-            onChanged: apply,
+        // 入力欄が上・−/＋が下（長押し加速）。中央揃え。
+        Center(
+          child: SizedBox(
+            width: 150,
+            child: NumberStepper(
+              value: current,
+              min: min,
+              max: effMax,
+              onChanged: apply,
+            ),
           ),
         ),
         const SizedBox(height: 14),
