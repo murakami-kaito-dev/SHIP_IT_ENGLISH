@@ -23,6 +23,24 @@ class AudioClipService {
 
   final AudioPlayer _player = AudioPlayer(playerId: 'pronunciation');
 
+  /// 発音音声は「サイレントスイッチONでも聞こえる」のが仕様（学習の核）。
+  /// SFX(SoundService)が直前にセッションを ambient に変えていても、
+  /// 再生の直前にこの playback コンテキストへ設定し直して消音を上書きする。
+  static final AudioContext _playbackContext = AudioContext(
+    iOS: AudioContextIOS(
+      category: AVAudioSessionCategory.playback,
+      options: const {
+        AVAudioSessionOptions.defaultToSpeaker,
+        AVAudioSessionOptions.mixWithOthers,
+      },
+    ),
+    android: const AudioContextAndroid(
+      contentType: AndroidContentType.speech,
+      usageType: AndroidUsageType.assistanceAccessibility,
+      audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+    ),
+  );
+
   /// ロケール → 利用可能なキー集合
   final Map<String, Set<String>> _keysByLocale = {};
   bool _loaded = false;
@@ -41,22 +59,7 @@ class AudioClipService {
     _loaded = true;
     // iOS: サイレントスイッチONでも鳴らす（TtsServiceのセッション設定と揃える）
     try {
-      await AudioPlayer.global.setAudioContext(
-        AudioContext(
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.playback,
-            options: const {
-              AVAudioSessionOptions.defaultToSpeaker,
-              AVAudioSessionOptions.mixWithOthers,
-            },
-          ),
-          android: const AudioContextAndroid(
-            contentType: AndroidContentType.speech,
-            usageType: AndroidUsageType.assistanceAccessibility,
-            audioFocus: AndroidAudioFocus.gainTransientMayDuck,
-          ),
-        ),
-      );
+      await AudioPlayer.global.setAudioContext(_playbackContext);
     } catch (e) {
       debugPrint('[AudioClipService] audio context failed: $e');
     }
@@ -83,6 +86,8 @@ class AudioClipService {
     final key = _key(text);
     if (!(_keysByLocale[locale]?.contains(key) ?? false)) return false;
     try {
+      // 直前にSFXが ambient にしていても、発音は消音でも鳴らすため playback に戻す
+      await AudioPlayer.global.setAudioContext(_playbackContext);
       await _player.stop();
       await _player.play(AssetSource('audio/$locale/$key.m4a'));
       return true;

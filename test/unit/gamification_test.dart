@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ship_it_english/features/gamification/domain/gamification.dart';
+import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
 import 'package:ship_it_english/features/study/domain/models/study_session.dart';
 
 void main() {
@@ -56,6 +57,64 @@ void main() {
     test('レベルに必要なXPはレベルが上がるほど増える', () {
       expect(GamificationConfig.xpForLevel(2),
           greaterThan(GamificationConfig.xpForLevel(1)));
+    });
+  });
+
+  group('EngineerRank（称号）', () {
+    test('レベルに応じて称号が上がる（帯の下限）', () {
+      expect(rankForLevel(1), EngineerRank.intern);
+      expect(rankForLevel(2), EngineerRank.intern);
+      expect(rankForLevel(3), EngineerRank.junior);
+      expect(rankForLevel(5), EngineerRank.engineer);
+      expect(rankForLevel(8), EngineerRank.senior);
+      expect(rankForLevel(12), EngineerRank.staff);
+      expect(rankForLevel(17), EngineerRank.principal);
+      expect(rankForLevel(25), EngineerRank.distinguished);
+    });
+
+    test('レベルが上がると称号は後退しない（単調非減少）', () {
+      var prev = -1;
+      for (var lv = 1; lv <= 40; lv++) {
+        final idx = rankForLevel(lv).index;
+        expect(idx, greaterThanOrEqualTo(prev));
+        prev = idx;
+      }
+    });
+  });
+
+  group('ストリーク保護の交換ゲート（GamificationState）', () {
+    GamificationState state(
+            {required int totalXp, int spentXp = 0, int freezes = 0}) =>
+        GamificationState(
+          snapshot: GamificationSnapshot.fromTotalXp(totalXp),
+          combo: 0,
+          sessionXp: 0,
+          spentXp: spentXp,
+          streakFreezes: freezes,
+        );
+
+    test('使えるXP = 通算 − 使用済み（負にはならない）', () {
+      expect(state(totalXp: 500, spentXp: 200).availableXp, 300);
+      expect(state(totalXp: 100, spentXp: 999).availableXp, 0);
+    });
+
+    test('残高が足りて上限未満なら交換可能', () {
+      final s = state(
+          totalXp: GamificationConfig.streakFreezeCost, spentXp: 0, freezes: 0);
+      expect(s.canBuyStreakFreeze, true);
+    });
+
+    test('残高不足なら交換不可', () {
+      final s = state(totalXp: GamificationConfig.streakFreezeCost - 1);
+      expect(s.canBuyStreakFreeze, false);
+    });
+
+    test('上限に達していたら交換不可', () {
+      final s = state(
+          totalXp: 100000,
+          spentXp: 0,
+          freezes: GamificationConfig.maxStreakFreezes);
+      expect(s.canBuyStreakFreeze, false);
     });
   });
 }

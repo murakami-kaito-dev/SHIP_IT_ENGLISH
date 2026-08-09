@@ -15,47 +15,36 @@ class SoundService {
   final AudioPlayer _player = AudioPlayer(playerId: 'sfx')
     ..setReleaseMode(ReleaseMode.stop);
   bool _muted = false;
-  bool _ctxReady = false;
   set muted(bool v) => _muted = v;
 
-  Future<void> _ensureContext() async {
-    if (_ctxReady) return;
-    _ctxReady = true;
-    try {
-      // サイレントスイッチでも鳴らす／他の音（発音）と混ぜる
-      await AudioPlayer.global.setAudioContext(
-        AudioContext(
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.playback,
-            options: const {
-              AVAudioSessionOptions.defaultToSpeaker,
-              AVAudioSessionOptions.mixWithOthers,
-            },
-          ),
-          android: const AudioContextAndroid(
-            contentType: AndroidContentType.sonification,
-            usageType: AndroidUsageType.assistanceSonification,
-            audioFocus: AndroidAudioFocus.gainTransientMayDuck,
-          ),
-        ),
-      );
-    } catch (e) {
-      debugPrint('[SoundService] audio context failed: $e');
-    }
-  }
+  /// SFX 用のオーディオコンテキスト。
+  /// **iOS は `ambient`＝マナーモード（サイレントスイッチON）では鳴らさない**。
+  /// 発音音声（AudioClipService）は `playback` で消音でも鳴るが、あちらは
+  /// 再生直前にグローバルコンテキストを設定し直すので互いに干渉しない。
+  static final AudioContext _sfxContext = AudioContext(
+    iOS: AudioContextIOS(
+      category: AVAudioSessionCategory.ambient,
+      options: const {AVAudioSessionOptions.mixWithOthers},
+    ),
+    android: const AudioContextAndroid(
+      contentType: AndroidContentType.sonification,
+      usageType: AndroidUsageType.assistanceSonification,
+      audioFocus: AndroidAudioFocus.none,
+    ),
+  );
 
   /// SFX を再生（[rate] で再生速度＝ピッチを変える。コンボの上昇感に使う）。
   Future<void> _sfx(String name, {double volume = 1.0, double rate = 1.0}) async {
     if (_muted) return;
-    await _ensureContext();
     try {
+      // 再生の直前にマナーモード尊重（ambient）のセッションへ設定し直す。
+      // 直前に発音音声が playback にしていても、ここで ambient に戻す。
+      await AudioPlayer.global.setAudioContext(_sfxContext);
       await _player.stop();
       await _player.setPlaybackRate(rate);
       await _player.play(AssetSource('audio/sfx/$name.m4a'), volume: volume);
     } catch (e) {
       debugPrint('[SoundService] sfx($name) failed: $e');
-      // 失敗時は端末のシステム音でフォールバック
-      SystemSound.play(SystemSoundType.click);
     }
   }
 
@@ -96,8 +85,10 @@ class SoundService {
     _sfx('levelup', volume: 0.9);
   }
 
-  /// 不正解（＝復習へ）。暗い音は出さず、軽い触覚だけ（負の感情を軽減）。
+  /// 不正解（＝復習へ）。**沈まない柔らかい中立音**＋軽い触覚。
+  /// 下降音やブザーは使わず、負の感情を出さない設計。
   void retry() {
     HapticFeedback.selectionClick();
+    _sfx('soft', volume: 0.7);
   }
 }

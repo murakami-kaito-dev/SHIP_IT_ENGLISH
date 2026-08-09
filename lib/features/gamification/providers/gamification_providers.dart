@@ -12,24 +12,54 @@ class GamificationState {
   /// 現在のセッションで獲得したXPの累計（完了画面の「獲得XP」表示用）。
   final int sessionXp;
 
+  /// これまでに交換で使ったXPの累計。
+  final int spentXp;
+
+  /// 所持しているストリーク保護の数。
+  final int streakFreezes;
+
   const GamificationState({
     required this.snapshot,
     required this.combo,
     required this.sessionXp,
+    required this.spentXp,
+    required this.streakFreezes,
   });
 
   bool get fever => combo >= GamificationConfig.feverThreshold;
 
-  GamificationState copyWith(
-          {GamificationSnapshot? snapshot, int? combo, int? sessionXp}) =>
+  /// 交換に使える残高XP（通算 − 使用済み）。レベルは通算XPで決まるので減らない。
+  int get availableXp {
+    final v = snapshot.totalXp - spentXp;
+    return v < 0 ? 0 : v;
+  }
+
+  /// もう1つストリーク保護を交換できるか（残高＋上限の両方を満たす）。
+  bool get canBuyStreakFreeze =>
+      availableXp >= GamificationConfig.streakFreezeCost &&
+      streakFreezes < GamificationConfig.maxStreakFreezes;
+
+  GamificationState copyWith({
+    GamificationSnapshot? snapshot,
+    int? combo,
+    int? sessionXp,
+    int? spentXp,
+    int? streakFreezes,
+  }) =>
       GamificationState(
         snapshot: snapshot ?? this.snapshot,
         combo: combo ?? this.combo,
         sessionXp: sessionXp ?? this.sessionXp,
+        spentXp: spentXp ?? this.spentXp,
+        streakFreezes: streakFreezes ?? this.streakFreezes,
       );
 
   static const initial = GamificationState(
-      snapshot: GamificationSnapshot.empty, combo: 0, sessionXp: 0);
+      snapshot: GamificationSnapshot.empty,
+      combo: 0,
+      sessionXp: 0,
+      spentXp: 0,
+      streakFreezes: 0);
 }
 
 /// XP・レベル・コンボ・FEVERを管理する。XP総量のみ shared_preferences に永続化し、
@@ -43,7 +73,33 @@ class GamificationNotifier extends StateNotifier<GamificationState> {
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final totalXp = prefs.getInt(AppConstants.keyTotalXp) ?? 0;
-    state = state.copyWith(snapshot: GamificationSnapshot.fromTotalXp(totalXp));
+    // ストリーク保護は StreakManager が起動時に自動消費するため、prefs を正とする
+    state = state.copyWith(
+      snapshot: GamificationSnapshot.fromTotalXp(totalXp),
+      spentXp: prefs.getInt(AppConstants.keySpentXp) ?? 0,
+      streakFreezes: prefs.getInt(AppConstants.keyStreakFreezes) ?? 0,
+    );
+  }
+
+  /// 使えるXPを消費してストリーク保護を1つ交換する。成功で true。
+  /// 通算XP（レベルの基準）は減らさず、使用済みXP（`spentXp`）を増やす。
+  Future<bool> buyStreakFreeze() async {
+    if (!state.canBuyStreakFreeze) return false;
+    final newSpent = state.spentXp + GamificationConfig.streakFreezeCost;
+    final newFreezes = state.streakFreezes + 1;
+    state = state.copyWith(spentXp: newSpent, streakFreezes: newFreezes);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(AppConstants.keySpentXp, newSpent);
+    await prefs.setInt(AppConstants.keyStreakFreezes, newFreezes);
+    return true;
+  }
+
+  /// 起動時に StreakManager が保護を自動消費した後、最新値を prefs から読み直す。
+  Future<void> refreshStreakFreezes() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = state.copyWith(
+      streakFreezes: prefs.getInt(AppConstants.keyStreakFreezes) ?? 0,
+    );
   }
 
   /// 評価を1件反映し、演出用の結果を返す。

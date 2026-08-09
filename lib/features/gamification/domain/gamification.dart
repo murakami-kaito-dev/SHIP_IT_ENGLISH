@@ -22,6 +22,36 @@ class GamificationConfig {
   /// レベル [level]（1始まり）から次のレベルへ上がるのに必要なXP。
   /// 少しずつ増える緩やかなカーブ。
   static int xpForLevel(int level) => 60 + level * 40;
+
+  // --- ストリーク保護（XPで交換する特典） ---
+  /// ストリーク保護1つの交換コスト（使えるXP）。
+  static const int streakFreezeCost = 200;
+
+  /// 同時に持てるストリーク保護の上限。
+  static const int maxStreakFreezes = 3;
+}
+
+/// レベル帯に対応する称号（テック企業のキャリアラダーになぞらえる）。
+/// 数値だけのレベルに「今どの立場か」という意味を与える。
+enum EngineerRank {
+  intern,
+  junior,
+  engineer,
+  senior,
+  staff,
+  principal,
+  distinguished,
+}
+
+/// レベル [level] から称号を求める（各帯の下限レベル）。
+EngineerRank rankForLevel(int level) {
+  if (level >= 25) return EngineerRank.distinguished;
+  if (level >= 17) return EngineerRank.principal;
+  if (level >= 12) return EngineerRank.staff;
+  if (level >= 8) return EngineerRank.senior;
+  if (level >= 5) return EngineerRank.engineer;
+  if (level >= 3) return EngineerRank.junior;
+  return EngineerRank.intern;
 }
 
 /// あるXP総量に対する「レベル・レベル内進捗」のスナップショット。

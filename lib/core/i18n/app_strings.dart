@@ -1,3 +1,5 @@
+import 'package:ship_it_english/features/gamification/domain/gamification.dart';
+
 /// UI表示言語モード。
 /// - [ja] 日本語話者向け: UIは日本語、英語フレーズを学習する（従来の動作）
 /// - [en] 英語話者向け: UIは英語、日本語フレーズを学習する
@@ -385,6 +387,66 @@ class AppStrings {
   String get levelCaption => mode == LanguageMode.ja
       ? 'カードに正解するとXPが貯まり、レベルが上がります'
       : 'Answer cards correctly to earn XP and level up';
+
+  /// レベル帯に対応する称号（キャリアラダー）。
+  String rankName(EngineerRank rank) {
+    if (mode == LanguageMode.ja) {
+      return switch (rank) {
+        EngineerRank.intern => 'インターン',
+        EngineerRank.junior => 'ジュニアエンジニア',
+        EngineerRank.engineer => 'エンジニア',
+        EngineerRank.senior => 'シニアエンジニア',
+        EngineerRank.staff => 'スタッフエンジニア',
+        EngineerRank.principal => 'プリンシパルエンジニア',
+        EngineerRank.distinguished => 'ディスティングイッシュト',
+      };
+    }
+    return switch (rank) {
+      EngineerRank.intern => 'Intern',
+      EngineerRank.junior => 'Junior Engineer',
+      EngineerRank.engineer => 'Engineer',
+      EngineerRank.senior => 'Senior Engineer',
+      EngineerRank.staff => 'Staff Engineer',
+      EngineerRank.principal => 'Principal Engineer',
+      EngineerRank.distinguished => 'Distinguished Engineer',
+    };
+  }
+
+  // --- ストリーク保護（XPで交換する特典） ---
+  String get streakShieldTitle =>
+      mode == LanguageMode.ja ? 'ストリーク保護' : 'Streak Freeze';
+
+  String get streakShieldDesc => mode == LanguageMode.ja
+      ? '1日サボっても連続記録が途切れません。休んだ日に自動で消費されます。'
+      : 'Keeps your streak alive if you miss a day. Used automatically on a missed day.';
+
+  String streakShieldOwned(int n, int max) => mode == LanguageMode.ja
+      ? '所持 $n / $max'
+      : 'Owned $n / $max';
+
+  /// 交換に使える残高XP。
+  String availableXpLabel(int xp) =>
+      mode == LanguageMode.ja ? '使えるXP $xp' : 'Available $xp XP';
+
+  /// 交換ボタンの文言（コストXP）。
+  String exchangeForXp(int cost) => mode == LanguageMode.ja
+      ? '$cost XP で交換'
+      : 'Exchange for $cost XP';
+
+  String get streakShieldMax =>
+      mode == LanguageMode.ja ? '所持数が上限です' : 'You have the maximum';
+
+  String get streakShieldNotEnough =>
+      mode == LanguageMode.ja ? 'XPが足りません' : 'Not enough XP';
+
+  String get streakShieldPurchased => mode == LanguageMode.ja
+      ? 'ストリーク保護を1つ入手しました'
+      : 'Got 1 Streak Freeze';
+
+  /// 起動時に保護が自動消費されたときの通知。
+  String streakFreezeUsedNotice(int n) => mode == LanguageMode.ja
+      ? '🛡 ストリーク保護でストリークを守りました（$n個消費）'
+      : '🛡 A Streak Freeze saved your streak ($n used)';
 
   String correctWithAccuracy(int correct, int accuracy) =>
       '$correct ($accuracy%)';

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
+import 'package:ship_it_english/core/services/streak_manager.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/home/providers/home_providers.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
@@ -15,11 +16,36 @@ import 'package:ship_it_english/features/gamification/presentation/widgets/strea
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 起動時にストリーク保護が自動消費されていたら一度だけ知らせる
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _showStreakFreezeNoticeIfAny());
+  }
+
+  Future<void> _showStreakFreezeNoticeIfAny() async {
+    final n = await StreakManager().takeStreakFreezeUsedNotice();
+    if (n <= 0 || !mounted) return;
+    // 消費後の最新の所持数をゲーミフィケーション状態にも反映
+    await ref.read(gamificationProvider.notifier).refreshStreakFreezes();
+    if (!mounted) return;
+    final strings = ref.read(stringsProvider);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.streakFreezeUsedNotice(n))),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final sessionInfo = ref.watch(dailySessionInfoProvider);
     final progress = ref.watch(overallProgressProvider);
     final weekly = ref.watch(weeklyStatsProvider);
@@ -85,6 +111,9 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               // 通算で獲得した経験値（XP）とレベルを確認できるカード
               _LevelCard(strings: strings),
+              const SizedBox(height: 16),
+              // XPで交換する特典：ストリーク保護
+              _StreakShieldCard(strings: strings),
               const SizedBox(height: 24),
               weekly.when(
                 loading: () => const SizedBox.shrink(),
@@ -196,6 +225,7 @@ class _LevelCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final snap = ref.watch(gamificationProvider).snapshot;
     final remaining = (snap.xpForNextLevel - snap.xpIntoLevel).clamp(0, 1 << 30);
+    final rank = rankForLevel(snap.level);
 
     return Container(
       width: double.infinity,
@@ -223,6 +253,31 @@ class _LevelCard extends ConsumerWidget {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          // 現在の称号（キャリアラダー）＝レベルの意味づけ
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryLight,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.primary.withOpacity(0.35)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.workspace_premium_rounded,
+                    size: 15, color: AppTheme.primary),
+                const SizedBox(width: 5),
+                Text(
+                  strings.rankName(rank),
+                  style: AppTheme.bodyText.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 14),
           // LVバッジ＋イージング付きXPゲージ（現在レベル内の進捗）
           const XPProgressBar(),
@@ -233,6 +288,107 @@ class _LevelCard extends ConsumerWidget {
           ),
           const SizedBox(height: 2),
           Text(strings.levelCaption, style: AppTheme.captionText),
+        ],
+      ),
+    );
+  }
+}
+
+/// XP（使えるXP）を消費してストリーク保護を交換するカード。
+/// 連続記録を絶やさないための特典＝経験値の使い道を提供する。
+class _StreakShieldCard extends ConsumerWidget {
+  final AppStrings strings;
+  const _StreakShieldCard({required this.strings});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final g = ref.watch(gamificationProvider);
+    final canBuy = g.canBuyStreakFreeze;
+    final atMax = g.streakFreezes >= GamificationConfig.maxStreakFreezes;
+
+    return Container(
+      width: double.infinity,
+      padding: AppTheme.cardPadding,
+      decoration: AppTheme.cardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.shield_rounded,
+                      size: 18, color: AppTheme.streakFire),
+                  const SizedBox(width: 6),
+                  Text(strings.streakShieldTitle,
+                      style: AppTheme.headingMedium),
+                ],
+              ),
+              // 使えるXP（交換に使える残高）
+              Text(
+                strings.availableXpLabel(g.availableXp),
+                style: AppTheme.monoNumber.copyWith(color: AppTheme.primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // 所持数を盾アイコンで可視化
+          Row(
+            children: [
+              for (var i = 0; i < GamificationConfig.maxStreakFreezes; i++)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Icon(
+                    Icons.shield_rounded,
+                    size: 26,
+                    color: i < g.streakFreezes
+                        ? AppTheme.streakFire
+                        : AppTheme.surfaceBorder,
+                  ),
+                ),
+              const SizedBox(width: 4),
+              Text(
+                strings.streakShieldOwned(
+                    g.streakFreezes, GamificationConfig.maxStreakFreezes),
+                style: AppTheme.captionText,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(strings.streakShieldDesc, style: AppTheme.captionText),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onPressed: canBuy
+                  ? () async {
+                      final ok = await ref
+                          .read(gamificationProvider.notifier)
+                          .buyStreakFreeze();
+                      if (ok && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text(strings.streakShieldPurchased)),
+                        );
+                      }
+                    }
+                  : null,
+              icon: const Icon(Icons.add_moderator_rounded, size: 18),
+              label: Text(
+                atMax
+                    ? strings.streakShieldMax
+                    : (canBuy
+                        ? strings.exchangeForXp(
+                            GamificationConfig.streakFreezeCost)
+                        : strings.streakShieldNotEnough),
+              ),
+            ),
+          ),
         ],
       ),
     );

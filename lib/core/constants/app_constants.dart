@@ -55,6 +55,12 @@ class AppConstants {
   static const String keyReviewRequested = 'review_requested';
   static const String keyProEntitlement = 'pro_entitlement';
   static const String keyTotalXp = 'gamification_total_xp';
+  // これまでに交換（消費）したXPの累計。使えるXP = 通算XP − 使用済みXP。
+  static const String keySpentXp = 'gamification_spent_xp';
+  // 所持しているストリーク保護の数。
+  static const String keyStreakFreezes = 'streak_freezes';
+  // 起動時に自動消費したストリーク保護の枚数（ホームで一度だけ通知して0に戻す）。
+  static const String keyStreakFreezeUsedPending = 'streak_freeze_used_pending';
   static const String keyStudyScope = 'study_scope';
 
   /// 権利の検証に最後に成功した時刻（ISO8601）。

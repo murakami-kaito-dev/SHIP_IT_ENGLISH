@@ -12,6 +12,7 @@ Future<void> showLevelUpModal(
   required String title,
   required String levelLabel,
   required String continueLabel,
+  required String rankLabel,
 }) {
   SoundService.instance.levelUp();
   return showGeneralDialog<void>(
@@ -33,6 +34,7 @@ Future<void> showLevelUpModal(
             title: title,
             levelLabel: levelLabel,
             continueLabel: continueLabel,
+            rankLabel: rankLabel,
           ),
         ),
       );
@@ -45,11 +47,13 @@ class _LevelUpCard extends StatefulWidget {
   final String title;
   final String levelLabel;
   final String continueLabel;
+  final String rankLabel;
   const _LevelUpCard({
     required this.newLevel,
     required this.title,
     required this.levelLabel,
     required this.continueLabel,
+    required this.rankLabel,
   });
 
   @override
@@ -117,6 +121,16 @@ class _LevelUpCardState extends State<_LevelUpCard> {
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
                     ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 現在の称号（キャリアラダー）
+                Text(
+                  widget.rankLabel,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 24),

@@ -143,6 +143,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
         title: strings.levelUpTitle,
         levelLabel: strings.levelWord,
         continueLabel: strings.continueButton,
+        rankLabel: strings.rankName(rankForLevel(outcome.newLevel)),
       );
     }
 
