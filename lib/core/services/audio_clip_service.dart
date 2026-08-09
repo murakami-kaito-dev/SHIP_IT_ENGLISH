@@ -43,6 +43,22 @@ class AudioClipService {
     ),
   );
 
+  /// 耳学（連続再生）用のコンテキスト。**`mixWithOthers` を付けない**。
+  /// 付けると「他の音と混ざる控えめな音声」扱いになり、**アプリが Now Playing の
+  /// 座を取らず、ロック画面/コントロールセンターに曲名も操作も出ない**（音楽
+  /// プレイヤー同様に主役として鳴らすため外す）。`playback` なので消音でも鳴る。
+  static final AudioContext _listeningContext = AudioContext(
+    iOS: AudioContextIOS(
+      category: AVAudioSessionCategory.playback,
+      options: const {},
+    ),
+    android: const AudioContextAndroid(
+      contentType: AndroidContentType.speech,
+      usageType: AndroidUsageType.media,
+      audioFocus: AndroidAudioFocus.gain,
+    ),
+  );
+
   /// 再生完了（または外部stop）まで待つための待機ハンドル。
   Completer<void>? _activeWait;
 
@@ -114,9 +130,10 @@ class AudioClipService {
     if (!(_keysByLocale[locale]?.contains(key) ?? false)) return false;
     StreamSubscription<void>? sub;
     try {
+      // 耳学は Now Playing の座を取る（mixWithOthers なし）ため専用コンテキスト。
       // セッション設定の失敗（-50等）で再生自体を止めないよう内側で握りつぶす
       try {
-        await AudioPlayer.global.setAudioContext(_playbackContext);
+        await AudioPlayer.global.setAudioContext(_listeningContext);
       } catch (e) {
         debugPrint('[AudioClipService] setAudioContext skipped: $e');
       }

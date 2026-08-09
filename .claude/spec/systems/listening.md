@@ -29,6 +29,8 @@
   - コントローラーが状態変化ごとに `NowPlayingService.update(title=フレーズ/訳, artist=`cardNumberLabel`, isPlaying)` を送信。`dispose` で `clear`。
   - iOS ネイティブ（`MPNowPlayingInfoCenter`/`MPRemoteCommandCenter`・MethodChannel `shipit/now_playing`）が曲名表示と 再生/停止・次/前 を提供。押下は Dart の `play/pause/togglePlay/next/previous` へ。
   - **チャンネル設定は `super.application(...)` の後**に行う（前だと `rootViewController` が nil でチャンネルが張れず、ロック画面に「再生停止中」のまま出ない）。`beginReceivingRemoteControlEvents()` も呼ぶ。
+  - **耳学の再生セッションは `mixWithOthers` を付けない**（`_listeningContext`＝`playback`＋オプション無し）。付けると「他の音と混ざる控えめな再生」扱いで**アプリがNow Playingの座を取れず、曲名・操作が出ない／リモート操作が効かない**。発音ボタンの単発再生（`_playbackContext`）は `mixWithOthers` のまま。
+- **シークバーのちらつき対策**：`_SeekBar` はドラッグ解放後、`_hold`（目標値）＋`_holdLine` でつまみを保持し、実際の再生位置が目標行・目標付近に追いつくまで live 追従を再開しない（保険Timer 1.5s）。解放直後に live へ即戻すとつまみが飛ぶため。
   - 秒数メタデータを持たないため進捗バーは出さない（曲送り・再生/停止のみ）。
 
 ## プレイヤーUI（[listening_screen.dart](../../../lib/features/listening/presentation/listening_screen.dart)）

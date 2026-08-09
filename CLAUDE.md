@@ -242,6 +242,11 @@ test/
 - **XP総量だけを永続化**（`keyTotalXp`）。レベルとレベル内進捗は `GamificationSnapshot.fromTotalXp()` で都度算出（別々に保存しない）。コンボ・セッションXPはセッション内の一時状態で永続化しない（`startSession()` でリセット）
 - **効果音/振動は必ず `SoundService` 経由**（直接 HapticFeedback を撒かない）。実SFXを足すときは `_sfx()` をローカルアセット再生に差し替える（ネットワーク非通信・データ収集なしの方針を維持）
 - **`dart_defines.json` は秘密（GEMINI_API_KEY）を含むため `.gitignore` 済み**。コミット/Pushに含めない
+- **iOSのバックグラウンド/ロック画面再生（Now Playing）は `mixWithOthers` を付けない**。付けると「他の音と混ざる控えめな再生」扱いになり**アプリがNow Playingの座を取れず、ロック画面に曲名・操作が出ない／リモート操作が効かない**。主役として鳴らす連続再生（耳学）は `playback`＋オプション無しの専用コンテキストを使う（発音ボタンの単発再生は `mixWithOthers` のままで可）。表示/操作は `NowPlayingService`＋`AppDelegate.swift`（`MPNowPlayingInfoCenter`/`MPRemoteCommandCenter`）。チャンネル設定は `super.application` の**後**（rootViewController確定後）。
+- **リスト並び替え（ReorderableList）＆スライダー（シークバー）のちらつき対策（ベストプラクティス）**:
+  - **キーは安定・一意に**：`ReorderableListView`/`Sliver...` の各行は `ValueKey(不変のid)`（カード番号やインデックス等の可変値をkeyにしない）。`onReorder` はメインで**同期的に**state更新（重い永続化は後追い/バックグラウンド）。再生中要素は id で追従させる（本アプリの耳学キューが該当）。
+  - **スライダーは「離した直後にライブ値へ即戻さない」**：`onChangeEnd` で live 値に戻すと、内部状態（再生位置/対象行）が一瞬食い違い**つまみがカクッと飛ぶ**。ドラッグ解放後は**目標値でつまみを保持**し、実際の再生位置が目標へ追いつく（対象行が一致し誤差が小さくなる）まで live 追従を再開しない（`_hold`/`_holdLine`＋保険Timer。`listening_screen.dart` の `_SeekBar` 参照）。
+  - **アニメーションの範囲を最小化**：`AnimatedContainer` 等は変化させたい要素だけに限定し、リスト全体を包む `.animation` 相当の広域再描画を避ける。
 
 ---
 

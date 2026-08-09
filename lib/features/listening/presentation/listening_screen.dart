@@ -307,19 +307,43 @@ class _SeekBarState extends State<_SeekBar> {
   final _clip = AudioClipService();
   Duration _clipPos = Duration.zero; // 現在行クリップ内の位置
   double? _drag; // ドラッグ中の通算ミリ秒
+
+  // ドラッグを離した直後、実際の再生位置が追いつくまでつまみをこの値で保持する。
+  // 離した瞬間に live 値へ戻すと、行/クリップ位置が一時的に食い違ってつまみが
+  // カクッと飛ぶ（ちらつく）ため、目標へ到達するまで固定する。
+  double? _hold;
+  int _holdLine = -1;
+  Timer? _holdTimer; // 保険：一定時間で必ず解除
+
   StreamSubscription<Duration>? _posSub;
 
   @override
   void initState() {
     super.initState();
     _posSub = _clip.onPositionChanged.listen((d) {
-      if (mounted && _drag == null) setState(() => _clipPos = d);
+      if (!mounted || _drag != null) return;
+      setState(() {
+        _clipPos = d;
+        // シーク先の行に実際に移り、live が目標付近に来たら保持を解除
+        if (_hold != null && widget.currentLine == _holdLine) {
+          final live = (_cumBeforeMs + _clampedClipMs).toDouble();
+          if ((live - _hold!).abs() < 600) _clearHold();
+        }
+      });
     });
+  }
+
+  void _clearHold() {
+    _hold = null;
+    _holdLine = -1;
+    _holdTimer?.cancel();
+    _holdTimer = null;
   }
 
   @override
   void dispose() {
     _posSub?.cancel();
+    _holdTimer?.cancel();
     super.dispose();
   }
 
@@ -330,6 +354,12 @@ class _SeekBarState extends State<_SeekBar> {
 
   int get _totalMs =>
       widget.lineDurations.fold(0, (a, b) => a + b.inMilliseconds);
+
+  int get _curLineMs => widget.currentLine < widget.lineDurations.length
+      ? widget.lineDurations[widget.currentLine].inMilliseconds
+      : 0;
+
+  int get _clampedClipMs => _clipPos.inMilliseconds.clamp(0, _curLineMs);
 
   // 現在行より前の行の長さの合計（通算オフセットの基点）
   int get _cumBeforeMs {
@@ -347,12 +377,10 @@ class _SeekBarState extends State<_SeekBar> {
     final totalMs = _totalMs;
     final hasTimeline = totalMs > 0 && widget.lineDurations.isNotEmpty;
 
-    final curLineMs = widget.currentLine < widget.lineDurations.length
-        ? widget.lineDurations[widget.currentLine].inMilliseconds
-        : 0;
-    final clipMs = _clipPos.inMilliseconds.clamp(0, curLineMs);
-    final liveGlobal = (_cumBeforeMs + clipMs).toDouble();
-    final value = (_drag ?? liveGlobal).clamp(0.0, totalMs.toDouble());
+    final liveGlobal = (_cumBeforeMs + _clampedClipMs).toDouble();
+    // 表示は「ドラッグ中 > 離した直後の保持 > ライブ位置」の優先順
+    final value =
+        (_drag ?? _hold ?? liveGlobal).clamp(0.0, totalMs.toDouble());
 
     return Column(
       children: [
@@ -373,7 +401,17 @@ class _SeekBarState extends State<_SeekBar> {
             onChangeEnd: hasTimeline
                 ? (v) {
                     widget.onSeek(Duration(milliseconds: v.round()));
-                    setState(() => _drag = null);
+                    final r = lineAtGlobal(
+                        widget.lineDurations, Duration(milliseconds: v.round()));
+                    setState(() {
+                      _hold = v;
+                      _holdLine = r.line;
+                      _drag = null;
+                    });
+                    _holdTimer?.cancel();
+                    _holdTimer = Timer(const Duration(milliseconds: 1500), () {
+                      if (mounted) setState(_clearHold);
+                    });
                   }
                 : null,
           ),
