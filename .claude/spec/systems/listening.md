@@ -24,6 +24,10 @@
 - **シーク**：`jumpTo(index)` でその位置の**カード**へ移動（キュー行タップ）。`seekToLine(line)` で**現在カード内の行**から再生し直す（シークバー＝1アイテム内の位置調整。カードは移動しない）。
 - 停止/一時停止/スキップ/並べ替えは `_runToken`（世代トークン）で進行中ループを無効化して制御。`dispose` で停止。
 - **バックグラウンド/画面ロック再生**：`ios/Runner/Info.plist` の `UIBackgroundModes=[audio]`＋`playback` カテゴリで、スリープ・アプリ切替中も再生継続。
+- **ロック画面/コントロールセンター表示・操作**（[now_playing_service.dart](../../../lib/core/services/now_playing_service.dart) ＋ [AppDelegate.swift](../../../ios/Runner/AppDelegate.swift)）：
+  - コントローラーが状態変化ごとに `NowPlayingService.update(title=フレーズ/訳, artist=`cardNumberLabel`, isPlaying)` を送信。`dispose` で `clear`。
+  - iOS ネイティブ（`MPNowPlayingInfoCenter`/`MPRemoteCommandCenter`・MethodChannel `shipit/now_playing`）が曲名表示と 再生/停止・次/前 を提供。押下は Dart の `play/pause/togglePlay/next/previous` へ。
+  - 秒数メタデータを持たないため進捗バーは出さない（曲送り・再生/停止のみ）。
 
 ## プレイヤーUI（[listening_screen.dart](../../../lib/features/listening/presentation/listening_screen.dart)）
 - `AppBackground(Scaffold(...))`（フルスクリーン遷移の作法）。

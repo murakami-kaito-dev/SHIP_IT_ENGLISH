@@ -8,6 +8,7 @@
 - 通常デイリー：`loadSession(maxNewCards)`（復習期限到来分＋残り新規枠）。
 - `mode=practice`：`loadPracticeSession`（今日学習した未習得＋期限切れを苦手順）。
 - `category` + `from`/`to`(+`statuses`,`order`)：`loadCategoryStudySession`（範囲/状況/順序指定）。
+  - 範囲指定は `range_study_sheet.dart`。番号の最小/最大は `_StepButton`（− 直接入力 ＋）。**＋/− は長押しで加速して連続増減**（`Timer` で 400ms→最短35msまで詰める）。カテゴリ詳細の「学習/聴く」から開き、`RangeSheetMode` で学習/耳学を出し分け（[systems/listening.md](../systems/listening.md)）。
 - 無料プランは新規カードの出所を `freeCategoryIds` に限定。
 
 ## 画面構成

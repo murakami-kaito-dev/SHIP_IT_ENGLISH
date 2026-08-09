@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -503,23 +505,65 @@ class _RangeMinMaxSelectorState extends State<_RangeMinMaxSelector> {
 }
 
 /// ステッパーの ± 丸ボタン（無効時はグレーで押せない）。
-class _StepButton extends StatelessWidget {
+/// **押しっぱなしで加速して連続増減**する（ちまちま連打しなくてよい）。
+class _StepButton extends StatefulWidget {
   final IconData icon;
   final VoidCallback? onTap;
   const _StepButton({required this.icon, required this.onTap});
 
   @override
+  State<_StepButton> createState() => _StepButtonState();
+}
+
+class _StepButtonState extends State<_StepButton> {
+  Timer? _timer;
+  int _repeats = 0;
+
+  void _start() {
+    if (widget.onTap == null) return;
+    widget.onTap!(); // 即時1回
+    _repeats = 0;
+    _scheduleNext();
+  }
+
+  void _scheduleNext() {
+    // 初回は少し待ち、その後は押し続けるほど間隔を詰めて加速する
+    final ms = _repeats == 0 ? 400 : (260 - _repeats * 24).clamp(35, 260);
+    _timer = Timer(Duration(milliseconds: ms), () {
+      if (!mounted || widget.onTap == null) {
+        _stop();
+        return;
+      }
+      widget.onTap!();
+      _repeats++;
+      _scheduleNext();
+    });
+  }
+
+  void _stop() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  @override
+  void dispose() {
+    _stop();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final enabled = onTap != null;
-    return Material(
-      color: enabled ? AppTheme.primaryLight : AppTheme.surfaceBorder,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
+    final enabled = widget.onTap != null;
+    return GestureDetector(
+      onTapDown: enabled ? (_) => _start() : null,
+      onTapUp: (_) => _stop(),
+      onTapCancel: _stop,
+      child: Material(
+        color: enabled ? AppTheme.primaryLight : AppTheme.surfaceBorder,
+        shape: const CircleBorder(),
         child: Padding(
           padding: const EdgeInsets.all(6),
-          child: Icon(icon,
+          child: Icon(widget.icon,
               size: 20,
               color: enabled ? AppTheme.primary : AppTheme.textTertiary),
         ),

@@ -6,10 +6,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ship_it_english/core/constants/app_constants.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/core/providers/core_providers.dart';
+import 'package:ship_it_english/core/services/now_playing_service.dart';
 import 'package:ship_it_english/core/services/tts_service.dart';
 import 'package:ship_it_english/features/listening/domain/listening_state.dart';
 import 'package:ship_it_english/features/study/data/local_card_repository.dart';
 import 'package:ship_it_english/features/study/domain/models/card_model.dart';
+import 'package:ship_it_english/shared/widgets/card_number_label.dart';
 
 /// 耳学の対象カードを取得する条件（学習の範囲指定と同じ項目＋ランダム）。
 class ListenConfig {
@@ -65,8 +67,29 @@ class ListeningController extends StateNotifier<ListeningState> {
   /// 再生シーケンスの世代。停止/スキップ/並べ替えで無効化して古いループを止める。
   int _runToken = 0;
 
+  final NowPlayingService _np = NowPlayingService.instance;
+
   ListeningController(this._tts) : super(ListeningState.initial) {
     _loadPrefs();
+    // ロック画面/コントロールセンターからの操作を受ける
+    _np.init();
+    _np.onPlay = play;
+    _np.onPause = pause;
+    _np.onTogglePlay = togglePlay;
+    _np.onNext = next;
+    _np.onPrevious = previous;
+  }
+
+  /// ロック画面/ミュージック欄の表示を現在の状態に更新する。
+  void _updateNowPlaying() {
+    final c = state.current;
+    if (c == null) return;
+    final title = state.mode == LanguageMode.ja ? c.phrase : c.translation;
+    unawaited(_np.update(
+      title: title,
+      artist: cardNumberLabel(c),
+      isPlaying: state.isPlaying,
+    ));
   }
 
   Future<void> _loadPrefs() async {
@@ -96,6 +119,7 @@ class ListeningController extends StateNotifier<ListeningState> {
   void play() {
     if (state.isEmpty || state.isPlaying) return;
     state = state.copyWith(isPlaying: true, finished: false);
+    _updateNowPlaying();
     final token = ++_runToken;
     unawaited(_runLoop(token));
   }
@@ -103,6 +127,7 @@ class ListeningController extends StateNotifier<ListeningState> {
   void pause() {
     _runToken++; // 進行中のループを無効化
     state = state.copyWith(isPlaying: false);
+    _updateNowPlaying();
     unawaited(_tts.stop());
   }
 
@@ -192,14 +217,17 @@ class ListeningController extends StateNotifier<ListeningState> {
           await _gap(_cardGap, token);
           if (token != _runToken || !state.isPlaying) return;
           state = state.copyWith(index: 0, line: 0);
+          _updateNowPlaying();
         } else {
           state = state.copyWith(isPlaying: false, finished: true, line: 0);
+          _updateNowPlaying();
           return;
         }
       } else {
         await _gap(_cardGap, token);
         if (token != _runToken || !state.isPlaying) return;
         state = state.copyWith(index: state.index + 1, line: 0);
+        _updateNowPlaying();
       }
     }
   }
@@ -219,6 +247,7 @@ class ListeningController extends StateNotifier<ListeningState> {
   void dispose() {
     _runToken++;
     unawaited(_tts.stop());
+    unawaited(_np.clear());
     super.dispose();
   }
 }
