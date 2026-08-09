@@ -24,12 +24,15 @@
 
 ## プレイヤーUI（[listening_screen.dart](../../../lib/features/listening/presentation/listening_screen.dart)）
 - `AppBackground(Scaffold(...))`（フルスクリーン遷移の作法）。
-- 現在カード（4行・再生中行をハイライト＋`graphic_eq`）／進捗／⏮ 再生⏸ ⏭／繰り返しトグル／速度セレクタ。
-- **「次に再生」キュー**：`DraggableScrollableSheet`（上スワイプで展開）内に `ReorderableListView`。右の `drag_handle`（`ReorderableDragStartListener`）でドラッグ並べ替え（`reorder`。再生中カードは追従）。行タップで `jumpTo`。
+- **常時は再生画面のみ**を表示（現在カード＝4行・再生中行ハイライト＋`graphic_eq`／進捗／⏮ 再生⏸ ⏭／繰り返しトグル／速度セレクタ）。
+- **「次に再生」キューはモーダル**：下部ハンドル `_UpNextHandle` のタップ、または**再生画面の上スワイプ**（`onVerticalDragEnd` velocity<-250）で `showModalBottomSheet` を開く（`_QueueList`・高さ0.7）。常時ピークさせない（以前の常時表示 `DraggableScrollableSheet` は廃止）。
+- キューは `ReorderableListView`＋右の `drag_handle`（`ReorderableDragStartListener`）でドラッグ並べ替え（`reorder`。再生中カードは追従）。行タップで `jumpTo`。
 
 ## 音声基盤の変更（[tts-audio.md](tts-audio.md) と共通）
 - `TtsService.speakLocale(text, locale)`：ロケール明示の単発再生（カード詳細の両言語スピーカー＝依頼1-2で使用）。`speakTarget` はこれの薄いラッパに。
-- `TtsService.speakAndWait(...)` / `AudioClipService.playAndWait(...)`：**完了待ち**再生（耳学の順次再生用）。audioplayers の `onPlayerStateChanged`（completed/stopped）で完了検知。
+- `TtsService.speakAndWait(...)` / `AudioClipService.playAndWait(...)`：**完了待ち**再生（耳学の順次再生用）。
+  - 完了検知は `onPlayerComplete`（自然終了）で解く。**外部 `stop()` は保持した `_activeWait` Completer を完了させて待機を解く**（一時停止/スキップに即応）。`onPlayerStateChanged`（stopped）だと再生開始直後の状態遷移で誤発火し「猛烈に速く進む」ため使わない。
+  - iOSセッションは `playback`＋`mixWithOthers` のみ（`defaultToSpeaker` は付けない＝ `Error -50` 回避。[gamification.md](gamification.md) 参照）。
 
 ## 注意
 - 耳学は**学習記録に非反映**。SRS/ストリーク/XPのコードには触れない。

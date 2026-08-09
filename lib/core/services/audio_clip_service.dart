@@ -27,13 +27,14 @@ class AudioClipService {
   /// 発音音声は「サイレントスイッチONでも聞こえる」のが仕様（学習の核）。
   /// SFX(SoundService)が直前にセッションを ambient に変えていても、
   /// 再生の直前にこの playback コンテキストへ設定し直して消音を上書きする。
+  ///
+  /// ⚠️ iOSの `defaultToSpeaker` は `playAndRecord` 専用オプション。`playback` と
+  /// 併用すると `Error -50`（不正パラメータ）でセッション設定が失敗し、再生されない。
+  /// `playback` は元々スピーカー出力かつサイレントスイッチを無視するので不要。
   static final AudioContext _playbackContext = AudioContext(
     iOS: AudioContextIOS(
       category: AVAudioSessionCategory.playback,
-      options: const {
-        AVAudioSessionOptions.defaultToSpeaker,
-        AVAudioSessionOptions.mixWithOthers,
-      },
+      options: const {AVAudioSessionOptions.mixWithOthers},
     ),
     android: const AudioContextAndroid(
       contentType: AndroidContentType.speech,
@@ -41,6 +42,9 @@ class AudioClipService {
       audioFocus: AndroidAudioFocus.gainTransientMayDuck,
     ),
   );
+
+  /// 再生完了（または外部stop）まで待つための待機ハンドル。
+  Completer<void>? _activeWait;
 
   /// ロケール → 利用可能なキー集合
   final Map<String, Set<String>> _keysByLocale = {};
@@ -106,29 +110,37 @@ class AudioClipService {
     await _ensureLoaded();
     final key = _key(text);
     if (!(_keysByLocale[locale]?.contains(key) ?? false)) return false;
+    StreamSubscription<void>? sub;
     try {
-      await AudioPlayer.global.setAudioContext(_playbackContext);
+      // セッション設定の失敗（-50等）で再生自体を止めないよう内側で握りつぶす
+      try {
+        await AudioPlayer.global.setAudioContext(_playbackContext);
+      } catch (e) {
+        debugPrint('[AudioClipService] setAudioContext skipped: $e');
+      }
       await _player.stop();
-      await _player.setPlaybackRate(rate);
-      // 自然終了(completed) と 外部stop(stopped) のどちらでも完了扱いにする
-      final done = Completer<void>();
-      final sub = _player.onPlayerStateChanged.listen((st) {
-        if ((st == PlayerState.completed || st == PlayerState.stopped) &&
-            !done.isCompleted) {
-          done.complete();
-        }
+      // 自然終了(onPlayerComplete)で解ける。外部stop()でも [stop] が解く。
+      final wait = _activeWait = Completer<void>();
+      sub = _player.onPlayerComplete.listen((_) {
+        if (!wait.isCompleted) wait.complete();
       });
-      await _player.play(AssetSource('audio/$locale/$key.m4a'));
-      await done.future;
-      await sub.cancel();
+      await _player.play(AssetSource('audio/$locale/$key.m4a'), volume: 1.0);
+      // 再生開始後に速度指定（開始前だと無視される端末があるため）
+      if (rate != 1.0) await _player.setPlaybackRate(rate);
+      await wait.future;
       return true;
     } catch (e) {
       debugPrint('[AudioClipService] playAndWait failed: $e');
       return true; // クリップは存在した＝端末TTSへは落とさない
+    } finally {
+      await sub?.cancel();
     }
   }
 
   Future<void> stop() async {
+    // 待機中の playAndWait を解いて次へ進めるようにする
+    final wait = _activeWait;
+    if (wait != null && !wait.isCompleted) wait.complete();
     try {
       await _player.stop();
     } catch (_) {}

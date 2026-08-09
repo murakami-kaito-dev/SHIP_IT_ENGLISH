@@ -71,91 +71,150 @@ class _ListeningScreenState extends ConsumerState<ListeningScreen> {
     final card = st.current!;
     final lines = speechLinesFor(card, st.mode);
 
-    return Stack(
-      children: [
-        // メインのプレイヤー（下部のキューシートに隠れないよう余白を確保）
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
-          child: Column(
-            children: [
-              // 進捗
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    st.finished ? strings.listenFinished : strings.listenNowPlaying,
-                    style: AppTheme.captionText.copyWith(
-                      color: st.finished ? AppTheme.ratingRemembered : null,
-                      fontWeight: FontWeight.w700,
-                    ),
+    // キューは常時表示せず、上スワイプ／ハンドルのタップで開く（再生画面が主役）
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onVerticalDragEnd: (d) {
+        if ((d.primaryVelocity ?? 0) < -250) _openQueue(context, strings);
+      },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+        child: Column(
+          children: [
+            // 進捗
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  st.finished ? strings.listenFinished : strings.listenNowPlaying,
+                  style: AppTheme.captionText.copyWith(
+                    color: st.finished ? AppTheme.ratingRemembered : null,
+                    fontWeight: FontWeight.w700,
                   ),
-                  Text(
-                    strings.listenProgress(st.index + 1, st.queue.length),
-                    style: AppTheme.monoLabel.copyWith(color: AppTheme.primary),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // 現在のカード（4行・再生中の行をハイライト）
-              Expanded(
-                child: SingleChildScrollView(
-                  child: _NowCard(card: card, lines: lines, activeLine: st.line),
                 ),
+                Text(
+                  strings.listenProgress(st.index + 1, st.queue.length),
+                  style: AppTheme.monoLabel.copyWith(color: AppTheme.primary),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // 現在のカード（4行・再生中の行をハイライト）
+            Expanded(
+              child: SingleChildScrollView(
+                child: _NowCard(card: card, lines: lines, activeLine: st.line),
               ),
-              const SizedBox(height: 12),
-              // 速度・繰り返し
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _RepeatToggle(
-                    on: st.repeat,
-                    label: strings.listenRepeat,
-                    onTap: controller.toggleRepeat,
-                  ),
-                  _SpeedSelector(
-                    speed: st.speed,
-                    onSelect: controller.setSpeed,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              // 再生コントロール
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    iconSize: 34,
-                    color: AppTheme.textSecondary,
-                    icon: const Icon(Icons.skip_previous_rounded),
-                    onPressed: controller.previous,
-                  ),
-                  const SizedBox(width: 12),
-                  _PlayButton(
-                    playing: st.isPlaying,
-                    finished: st.finished,
-                    onTap: () {
-                      if (st.finished) {
-                        controller.jumpTo(0);
-                      } else {
-                        controller.togglePlay();
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 12),
-                  IconButton(
-                    iconSize: 34,
-                    color: AppTheme.textSecondary,
-                    icon: const Icon(Icons.skip_next_rounded),
-                    onPressed: controller.next,
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            // 速度・繰り返し
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _RepeatToggle(
+                  on: st.repeat,
+                  label: strings.listenRepeat,
+                  onTap: controller.toggleRepeat,
+                ),
+                _SpeedSelector(
+                  speed: st.speed,
+                  onSelect: controller.setSpeed,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // 再生コントロール
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  iconSize: 34,
+                  color: AppTheme.textSecondary,
+                  icon: const Icon(Icons.skip_previous_rounded),
+                  onPressed: controller.previous,
+                ),
+                const SizedBox(width: 12),
+                _PlayButton(
+                  playing: st.isPlaying,
+                  finished: st.finished,
+                  onTap: () {
+                    if (st.finished) {
+                      controller.jumpTo(0);
+                    } else {
+                      controller.togglePlay();
+                    }
+                  },
+                ),
+                const SizedBox(width: 12),
+                IconButton(
+                  iconSize: 34,
+                  color: AppTheme.textSecondary,
+                  icon: const Icon(Icons.skip_next_rounded),
+                  onPressed: controller.next,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // 「次に再生」を開くハンドル（タップ or 上スワイプ）
+            _UpNextHandle(
+              label: strings.listenUpNext,
+              count: st.queue.length,
+              onTap: () => _openQueue(context, strings),
+            ),
+          ],
         ),
-        // 「次に再生」キュー（上スワイプで展開・ドラッグで並べ替え）
-        _QueueSheet(state: st, strings: strings, controller: controller),
-      ],
+      ),
+    );
+  }
+
+  /// 「次に再生」キューをモーダルで開く（並べ替え可能）。
+  void _openQueue(BuildContext context, AppStrings strings) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Consumer(
+        builder: (ctx, ref2, __) {
+          final st = ref2.watch(listeningControllerProvider);
+          final controller = ref2.read(listeningControllerProvider.notifier);
+          return _QueueList(
+              state: st, strings: strings, controller: controller);
+        },
+      ),
+    );
+  }
+}
+
+/// 「次に再生」を開くための下部ハンドル（︿ アイコン＋件数）。
+class _UpNextHandle extends StatelessWidget {
+  final String label;
+  final int count;
+  final VoidCallback onTap;
+  const _UpNextHandle(
+      {required this.label, required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.keyboard_arrow_up_rounded,
+                size: 22, color: AppTheme.textTertiary),
+            Text(
+              '$label ($count)',
+              style: AppTheme.captionText
+                  .copyWith(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -378,119 +437,107 @@ class _SpeedSelector extends StatelessWidget {
   }
 }
 
-/// 「次に再生」キュー。上スワイプで展開し、右のハンドルをドラッグで並べ替える。
-class _QueueSheet extends StatelessWidget {
+/// 「次に再生」キュー（モーダル表示）。右のハンドルをドラッグで並べ替える。
+class _QueueList extends StatelessWidget {
   final ListeningState state;
   final AppStrings strings;
   final ListeningController controller;
-  const _QueueSheet(
+  const _QueueList(
       {required this.state, required this.strings, required this.controller});
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.14,
-      minChildSize: 0.14,
-      maxChildSize: 0.85,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            boxShadow: AppTheme.cardShadow,
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.7,
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceBorder,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-          child: Column(
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceBorder,
-                  borderRadius: BorderRadius.circular(2),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+            child: Row(
+              children: [
+                const Icon(Icons.queue_music_rounded,
+                    size: 18, color: AppTheme.primary),
+                const SizedBox(width: 8),
+                Text(strings.listenUpNext, style: AppTheme.headingMedium),
+                const Spacer(),
+                Text(
+                  strings.listenProgress(state.index + 1, state.queue.length),
+                  style: AppTheme.captionText,
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
-                child: Row(
-                  children: [
-                    const Icon(Icons.queue_music_rounded,
-                        size: 18, color: AppTheme.primary),
-                    const SizedBox(width: 8),
-                    Text(strings.listenUpNext, style: AppTheme.headingMedium),
-                    const Spacer(),
-                    Text(
-                      strings.listenProgress(
-                          state.index + 1, state.queue.length),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ReorderableListView.builder(
+              buildDefaultDragHandles: false,
+              padding: const EdgeInsets.only(bottom: 24),
+              itemCount: state.queue.length,
+              onReorder: controller.reorder,
+              itemBuilder: (context, i) {
+                final card = state.queue[i];
+                final isCurrent = i == state.index;
+                // jaモード=英語を主表示 / enモード=日本語を主表示
+                final title = state.mode == LanguageMode.ja
+                    ? card.phrase
+                    : card.translation;
+                final subtitle = state.mode == LanguageMode.ja
+                    ? card.translation
+                    : card.phrase;
+                return Material(
+                  key: ValueKey(card.id),
+                  color: Colors.transparent,
+                  child: ListTile(
+                    onTap: () => controller.jumpTo(i),
+                    leading: isCurrent
+                        ? const Icon(Icons.graphic_eq_rounded,
+                            color: AppTheme.primary)
+                        : Text(
+                            cardNumberShort(card),
+                            style: AppTheme.monoLabel
+                                .copyWith(color: AppTheme.textTertiary),
+                          ),
+                    title: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTheme.bodyText.copyWith(
+                        fontWeight:
+                            isCurrent ? FontWeight.w800 : FontWeight.w600,
+                        color: isCurrent
+                            ? AppTheme.primary
+                            : AppTheme.textPrimary,
+                      ),
+                    ),
+                    subtitle: Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: AppTheme.captionText,
                     ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: ReorderableListView.builder(
-                  scrollController: scrollController,
-                  buildDefaultDragHandles: false,
-                  padding: const EdgeInsets.only(bottom: 24),
-                  itemCount: state.queue.length,
-                  onReorder: controller.reorder,
-                  itemBuilder: (context, i) {
-                    final card = state.queue[i];
-                    final isCurrent = i == state.index;
-                    // jaモード=英語を主表示 / enモード=日本語を主表示
-                    final title = state.mode == LanguageMode.ja
-                        ? card.phrase
-                        : card.translation;
-                    final subtitle = state.mode == LanguageMode.ja
-                        ? card.translation
-                        : card.phrase;
-                    return Material(
-                      key: ValueKey(card.id),
-                      color: Colors.transparent,
-                      child: ListTile(
-                        onTap: () => controller.jumpTo(i),
-                        leading: isCurrent
-                            ? const Icon(Icons.graphic_eq_rounded,
-                                color: AppTheme.primary)
-                            : Text(
-                                cardNumberShort(card),
-                                style: AppTheme.monoLabel
-                                    .copyWith(color: AppTheme.textTertiary),
-                              ),
-                        title: Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTheme.bodyText.copyWith(
-                            fontWeight:
-                                isCurrent ? FontWeight.w800 : FontWeight.w600,
-                            color:
-                                isCurrent ? AppTheme.primary : AppTheme.textPrimary,
-                          ),
-                        ),
-                        subtitle: Text(
-                          subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTheme.captionText,
-                        ),
-                        trailing: ReorderableDragStartListener(
-                          index: i,
-                          child: const Padding(
-                            padding: EdgeInsets.all(6),
-                            child: Icon(Icons.drag_handle_rounded,
-                                color: AppTheme.textTertiary),
-                          ),
-                        ),
+                    trailing: ReorderableDragStartListener(
+                      index: i,
+                      child: const Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Icon(Icons.drag_handle_rounded,
+                            color: AppTheme.textTertiary),
                       ),
-                    );
-                  },
-                ),
-              ),
-            ],
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }

@@ -42,7 +42,8 @@
 - **実SFXを再生**：事前生成した効果音 `assets/audio/sfx/{correct,combo,fever,levelup}.m4a`（純Dart合成→`afconvert`でAAC・各5〜8KB・**オフライン非通信**）を `audioplayers` で再生。ハプティクスも併用。
   - correct=軽い上昇2音／combo=明るいベル（**コンボ数に応じ `setPlaybackRate` でピッチ上昇**・上限1.6）／fever=きらめくアルペジオ／levelUp=ファンファーレ／celebrate=ファンファーレ流用／**retry（不正解）=`soft`（沈まない柔らかい中立音・音量0.7）**。tap は音なし（触覚のみ）。
   - **マナーモード尊重**：SFXは iOS `ambient` カテゴリ（サイレントスイッチONでは鳴らない）。再生直前に `AudioPlayer.global.setAudioContext(ambient)` を設定し直す。
-  - **発音音声（AudioClipService）は別扱い**：学習の核なので消音でも鳴らす。`playback`＋`defaultToSpeaker` を**各再生の直前に**設定し直して、SFXの ambient を上書きする（両者は互いに干渉しない）。
+  - **発音音声（AudioClipService）は別扱い**：学習の核なので消音でも鳴らす。`playback`（＋`mixWithOthers`のみ）を**各再生の直前に**設定し直して、SFXの ambient を上書きする（両者は互いに干渉しない）。
+  - ⚠️ iOSの `defaultToSpeaker` は `playAndRecord` 専用。`playback` と併用すると `Error -50` でセッション設定が失敗し**音が鳴らない**（実機で発覚。`playback` は元々スピーカー出力＋消音無視なので不要）。
 - **直接 HapticFeedback を撒かず必ず SoundService 経由**。
 - SFXの音そのものを作り直す場合の合成レシピは開発メモに残す（`_render`＝基音＋オクターブ＋5度のベル風・指数減衰）。
 
