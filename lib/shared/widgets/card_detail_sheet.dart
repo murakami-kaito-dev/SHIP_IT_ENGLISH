@@ -97,9 +97,6 @@ class _CardDetailSheetState extends ConsumerState<_CardDetailSheet> {
     final usage = isJa
         ? card.context
         : (card.contextEn.isNotEmpty ? card.contextEn : card.context);
-    // 学習対象言語（読み上げ対象）: jaモード=英語 / enモード=日本語
-    final speakTarget = isJa ? card.phrase : card.translation;
-    final speakExample = isJa ? card.example : card.exampleTranslation;
 
     return DraggableScrollableSheet(
       expand: false,
@@ -138,14 +135,11 @@ class _CardDetailSheetState extends ConsumerState<_CardDetailSheet> {
                   child: Text('"${card.phrase}"', style: AppTheme.phraseText),
                 ),
                 CardStatusChip(rating: _rating, strings: strings),
-                // jaモード（学習対象＝英語フレーズ）ではここに読み上げ
-                if (isJa) ...[
-                  const SizedBox(width: 4),
-                  _SpeakerButton(
-                    onTap: () =>
-                        TtsService().speakTarget(speakTarget, strings.mode),
-                  ),
-                ],
+                // 英語フレーズ → 英語音声（表示モードに関わらず両言語を鳴らせる）
+                const SizedBox(width: 4),
+                _SpeakerButton(
+                  onTap: () => TtsService().speakLocale(card.phrase, 'en-US'),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -156,12 +150,11 @@ class _CardDetailSheetState extends ConsumerState<_CardDetailSheet> {
                   child:
                       Text(card.translation, style: AppTheme.translationText),
                 ),
-                // enモード（学習対象＝日本語訳）ではここに読み上げ
-                if (!isJa)
-                  _SpeakerButton(
-                    onTap: () =>
-                        TtsService().speakTarget(speakTarget, strings.mode),
-                  ),
+                // 日本語訳 → 日本語音声
+                _SpeakerButton(
+                  onTap: () =>
+                      TtsService().speakLocale(card.translation, 'ja-JP'),
+                ),
               ],
             ),
             const Divider(height: 32),
@@ -181,12 +174,10 @@ class _CardDetailSheetState extends ConsumerState<_CardDetailSheet> {
                         AppTheme.bodyText.copyWith(fontStyle: FontStyle.italic),
                   ),
                 ),
-                // jaモード（学習対象＝英語例文）ではここに読み上げ
-                if (isJa)
-                  _SpeakerButton(
-                    onTap: () =>
-                        TtsService().speakTarget(speakExample, strings.mode),
-                  ),
+                // 英語例文 → 英語音声
+                _SpeakerButton(
+                  onTap: () => TtsService().speakLocale(card.example, 'en-US'),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -197,12 +188,11 @@ class _CardDetailSheetState extends ConsumerState<_CardDetailSheet> {
                   child:
                       Text(card.exampleTranslation, style: AppTheme.bodyText),
                 ),
-                // enモード（学習対象＝日本語例文）ではここに読み上げ
-                if (!isJa)
-                  _SpeakerButton(
-                    onTap: () =>
-                        TtsService().speakTarget(speakExample, strings.mode),
-                  ),
+                // 日本語例文 → 日本語音声
+                _SpeakerButton(
+                  onTap: () => TtsService()
+                      .speakLocale(card.exampleTranslation, 'ja-JP'),
+                ),
               ],
             ),
             const SizedBox(height: 20),

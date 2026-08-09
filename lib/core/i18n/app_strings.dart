@@ -448,6 +448,29 @@ class AppStrings {
       ? '🛡 ストリーク保護でストリークを守りました（$n個消費）'
       : '🛡 A Streak Freeze saved your streak ($n used)';
 
+  // --- 耳学（リスニング再生） ---
+  String get studyAction => mode == LanguageMode.ja ? '学習する' : 'Study';
+  String get listenAction => mode == LanguageMode.ja ? '聴く' : 'Listen';
+
+  /// 範囲指定シートの「聴く」CTA。
+  String get rangeStartListen =>
+      mode == LanguageMode.ja ? 'この条件で聴く' : 'Listen to these';
+
+  String get listenTitle => mode == LanguageMode.ja ? '耳学' : 'Listening';
+  String get listenUpNext => mode == LanguageMode.ja ? '次に再生' : 'Up next';
+  String get listenFinished => mode == LanguageMode.ja ? '再生完了' : 'Finished';
+  String get listenReplay =>
+      mode == LanguageMode.ja ? 'もう一度聴く' : 'Play again';
+  String get listenNowPlaying =>
+      mode == LanguageMode.ja ? '再生中' : 'Now playing';
+  String get listenRepeat => mode == LanguageMode.ja ? '繰り返し' : 'Repeat';
+  String get listenSpeed => mode == LanguageMode.ja ? '速度' : 'Speed';
+
+  /// 「3 / 40 枚」形式のカード進捗。
+  String listenProgress(int current, int total) => mode == LanguageMode.ja
+      ? '$current / $total 枚'
+      : '$current / $total';
+
   String correctWithAccuracy(int correct, int accuracy) =>
       '$correct ($accuracy%)';
 

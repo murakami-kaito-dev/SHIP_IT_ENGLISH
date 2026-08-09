@@ -9,6 +9,8 @@ import 'package:ship_it_english/shared/widgets/app_background.dart';
 import 'package:ship_it_english/features/categories/presentation/categories_screen.dart';
 import 'package:ship_it_english/features/categories/presentation/category_detail_screen.dart';
 import 'package:ship_it_english/features/history/presentation/history_screen.dart';
+import 'package:ship_it_english/features/listening/presentation/listening_screen.dart';
+import 'package:ship_it_english/features/listening/providers/listening_providers.dart';
 import 'package:ship_it_english/features/home/presentation/home_screen.dart';
 import 'package:ship_it_english/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:ship_it_english/features/paywall/presentation/paywall_screen.dart';
@@ -59,6 +61,24 @@ GoRouter createRouter({required bool showOnboarding}) {
                 ? const {}
                 : statusesCsv.split(',').toSet(),
             random: q['order'] == 'random',
+          );
+        },
+      ),
+      GoRoute(
+        path: '/listen',
+        builder: (_, state) {
+          final q = state.uri.queryParameters;
+          final statusesCsv = q['statuses'] ?? '';
+          return ListeningScreen(
+            config: ListenConfig(
+              categoryId: q['category'] ?? '',
+              from: int.tryParse(q['from'] ?? '') ?? 1,
+              to: int.tryParse(q['to'] ?? '') ?? 999999,
+              statuses: statusesCsv.isEmpty
+                  ? const {}
+                  : statusesCsv.split(',').toSet(),
+              random: q['order'] == 'random',
+            ),
           );
         },
       ),

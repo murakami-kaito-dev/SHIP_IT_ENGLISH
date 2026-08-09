@@ -95,14 +95,41 @@ class CategoryDetailScreen extends ConsumerWidget {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-          // このカテゴリを、学習状況・範囲・出題順を指定して学習する
+          // このカテゴリを、範囲・状況・順序を指定して「学習」または「耳学（聴く）」する。
+          // どちらも同じ範囲指定シートを開き、モードだけを引き継ぐ。
           // （Pro限定機能。無料プランはパウォールへ）
-          child: GradientButton(
-            label: strings.studyThisCategory,
-            icon: isPro ? Icons.play_arrow_rounded : Icons.lock_outline,
-            onPressed: () => isPro
-                ? showRangeStudySheet(context, fixedCategoryId: categoryId)
-                : context.push('/paywall'),
+          child: Row(
+            children: [
+              Expanded(
+                child: GradientButton(
+                  label: strings.studyAction,
+                  icon: isPro ? Icons.play_arrow_rounded : Icons.lock_outline,
+                  onPressed: () => isPro
+                      ? showRangeStudySheet(context,
+                          fixedCategoryId: categoryId)
+                      : context.push('/paywall'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, AppTheme.buttonHeight),
+                    foregroundColor: AppTheme.primary,
+                    side: const BorderSide(color: AppTheme.primary),
+                  ),
+                  onPressed: () => isPro
+                      ? showRangeStudySheet(context,
+                          fixedCategoryId: categoryId,
+                          mode: RangeSheetMode.listen)
+                      : context.push('/paywall'),
+                  icon: Icon(
+                      isPro ? Icons.headphones_rounded : Icons.lock_outline,
+                      size: 18),
+                  label: Text(strings.listenAction),
+                ),
+              ),
+            ],
           ),
         ),
       ),

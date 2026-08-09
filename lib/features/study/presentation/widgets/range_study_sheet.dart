@@ -9,12 +9,18 @@ import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/categories/providers/categories_providers.dart';
 
-/// カテゴリ学習の設定シートを開く。
-/// カテゴリ・学習状況・番号範囲・出題順を指定して学習する（枚数上限なし）。
+/// 範囲指定シートのモード。学習か、耳学（リスニング）か。
+/// 中身（カテゴリ・範囲・状況・順序）は共通で、最終ボタンと遷移先だけが変わる。
+enum RangeSheetMode { study, listen }
+
+/// カテゴリ学習/耳学の設定シートを開く。
+/// カテゴリ・学習状況・番号範囲・出題順を指定する（枚数上限なし）。
 /// [fixedCategoryId] を渡すとカテゴリはそれに固定される（カテゴリ詳細から呼ぶ場合）。
+/// [mode] が listen のとき、最終ボタンは「この条件で聴く」→ 耳学プレイヤーへ。
 void showRangeStudySheet(
   BuildContext context, {
   String? fixedCategoryId,
+  RangeSheetMode mode = RangeSheetMode.study,
 }) {
   showModalBottomSheet<void>(
     context: context,
@@ -23,7 +29,8 @@ void showRangeStudySheet(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (_) => _RangeStudySheet(fixedCategoryId: fixedCategoryId),
+    builder: (_) =>
+        _RangeStudySheet(fixedCategoryId: fixedCategoryId, mode: mode),
   );
 }
 
@@ -32,8 +39,9 @@ const _statusOptions = ['new', 'forgot', 'uncertain', 'remembered'];
 
 class _RangeStudySheet extends ConsumerStatefulWidget {
   final String? fixedCategoryId;
+  final RangeSheetMode mode;
 
-  const _RangeStudySheet({this.fixedCategoryId});
+  const _RangeStudySheet({this.fixedCategoryId, required this.mode});
 
   @override
   ConsumerState<_RangeStudySheet> createState() => _RangeStudySheetState();
@@ -87,7 +95,9 @@ class _RangeStudySheetState extends ConsumerState<_RangeStudySheet> {
     final query =
         params.entries.map((e) => '${e.key}=${e.value}').join('&');
     context.pop();
-    context.push('/study?$query');
+    // モードで遷移先を出し分ける：学習=/study、耳学=/listen
+    final path = widget.mode == RangeSheetMode.listen ? '/listen' : '/study';
+    context.push('$path?$query');
   }
 
   @override
@@ -236,6 +246,7 @@ class _RangeStudySheetState extends ConsumerState<_RangeStudySheet> {
                       statuses: _statuses,
                     ),
                     strings: strings,
+                    mode: widget.mode,
                     onStart: _start,
                   ),
                 ],
@@ -265,11 +276,13 @@ class _RangeStudySheetState extends ConsumerState<_RangeStudySheet> {
 class _StartSection extends ConsumerStatefulWidget {
   final CategoryStudyConfig config;
   final AppStrings strings;
+  final RangeSheetMode mode;
   final VoidCallback onStart;
 
   const _StartSection({
     required this.config,
     required this.strings,
+    required this.mode,
     required this.onStart,
   });
 
@@ -319,8 +332,12 @@ class _StartSectionState extends ConsumerState<_StartSection> {
         const SizedBox(height: 12),
         ElevatedButton.icon(
           onPressed: (count ?? 0) > 0 ? widget.onStart : null,
-          icon: const Icon(Icons.play_arrow),
-          label: Text(strings.rangeStart),
+          icon: Icon(widget.mode == RangeSheetMode.listen
+              ? Icons.headphones_rounded
+              : Icons.play_arrow),
+          label: Text(widget.mode == RangeSheetMode.listen
+              ? strings.rangeStartListen
+              : strings.rangeStart),
         ),
       ],
     );

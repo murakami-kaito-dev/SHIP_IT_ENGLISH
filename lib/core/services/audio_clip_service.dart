@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:audioplayers/audioplayers.dart';
@@ -94,6 +95,36 @@ class AudioClipService {
     } catch (e) {
       debugPrint('[AudioClipService] play failed: $e');
       return false;
+    }
+  }
+
+  /// 耳学（リスニング）用：同梱クリップがあれば**再生完了まで待って** true を返す。
+  /// 無ければ false（呼び出し側が端末TTSにフォールバック）。
+  /// [rate] は再生速度倍率（1.0=標準）。外部から stop() されると途中でも返る。
+  Future<bool> playAndWait(String text, String locale, {double rate = 1.0}) async {
+    if (text.trim().isEmpty) return false;
+    await _ensureLoaded();
+    final key = _key(text);
+    if (!(_keysByLocale[locale]?.contains(key) ?? false)) return false;
+    try {
+      await AudioPlayer.global.setAudioContext(_playbackContext);
+      await _player.stop();
+      await _player.setPlaybackRate(rate);
+      // 自然終了(completed) と 外部stop(stopped) のどちらでも完了扱いにする
+      final done = Completer<void>();
+      final sub = _player.onPlayerStateChanged.listen((st) {
+        if ((st == PlayerState.completed || st == PlayerState.stopped) &&
+            !done.isCompleted) {
+          done.complete();
+        }
+      });
+      await _player.play(AssetSource('audio/$locale/$key.m4a'));
+      await done.future;
+      await sub.cancel();
+      return true;
+    } catch (e) {
+      debugPrint('[AudioClipService] playAndWait failed: $e');
+      return true; // クリップは存在した＝端末TTSへは落とさない
     }
   }
 

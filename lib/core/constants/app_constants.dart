@@ -62,6 +62,9 @@ class AppConstants {
   // 起動時に自動消費したストリーク保護の枚数（ホームで一度だけ通知して0に戻す）。
   static const String keyStreakFreezeUsedPending = 'streak_freeze_used_pending';
   static const String keyStudyScope = 'study_scope';
+  // 耳学（リスニング）の再生設定を記憶する。
+  static const String keyListenSpeed = 'listen_speed';
+  static const String keyListenRepeat = 'listen_repeat';
 
   /// 権利の検証に最後に成功した時刻（ISO8601）。
   /// 猶予期間の判定に使う（オフラインで即失効させないため）

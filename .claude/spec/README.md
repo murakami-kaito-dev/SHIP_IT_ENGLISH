@@ -26,6 +26,7 @@
 | `/session-complete` | [screens/session-complete.md](screens/session-complete.md) |
 | `/categories` | [screens/categories.md](screens/categories.md) |
 | `/category/:id` | [screens/category-detail.md](screens/category-detail.md) |
+| `/listen` | [systems/listening.md](systems/listening.md)（耳学プレイヤー） |
 | `/settings` | [screens/settings.md](screens/settings.md) |
 | `/history` | [screens/history.md](screens/history.md) |
 | `/search` | [screens/search.md](screens/search.md) |
@@ -38,6 +39,7 @@
 | [systems/srs-and-study.md](systems/srs-and-study.md) | SM-2 SRS・デイリーセット・セッション進行・リポジトリ |
 | [systems/gamification.md](systems/gamification.md) | XP/レベル・コンボ/FEVER・演出・SoundService |
 | [systems/tts-audio.md](systems/tts-audio.md) | 発音音声（Polly事前生成＋端末TTSフォールバック） |
+| [systems/listening.md](systems/listening.md) | 耳学（リスニング自動再生・SRS非反映・キュー並べ替え） |
 | [systems/monetization.md](systems/monetization.md) | ShipIt Pro（休眠中）・課金・権利検証・ゲート |
 | [systems/platform-and-ui.md](systems/platform-and-ui.md) | i18n・テーマ/デザインシステム・通知・ストリーク・バックアップ |
 
