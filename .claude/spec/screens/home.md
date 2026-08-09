@@ -18,8 +18,9 @@
    - StudyScope は `loadSession(scope:)` に渡り、reviewOnly=新規除外/newOnly=復習除外（**SRSの予定日サイクルは不変**）。
    - **1日の新規カード数の設定はここには無い**（設定タブへ移動。[settings.md](settings.md)）。
 4. CTA：`GradientButton`「学習を始める」→`/study`、🎛（範囲指定シート）、「もう一度復習」→`/study?mode=practice`（practiceCardsCount>0時）。
-5. 週間サマリー棒グラフ、全体進捗バー（`studiedCount`基準）。
-6. 全カードmastered時は `_AllMasteredCard`。
+5. **`_LevelCard`（経験値/レベル）**：`gamificationProvider.snapshot` を watch。通算XP（`totalXpValue`）＋ `XPProgressBar`（LVバッジ＋ゲージ）＋ 次LVまでの残りXP（`xpToNext`）。**獲得経験値を確認できる常設の場所**。XPは起動時に `keyTotalXp` から復元される（[systems/gamification.md](../systems/gamification.md)）。
+6. 週間サマリー棒グラフ、全体進捗バー（`studiedCount`基準）。
+7. 全カードmastered時は `_AllMasteredCard`。
 
 ## 重要な仕様
 - **今日の残り新規枠 = 1日の上限 − 今日学習した新規（daily_stats.new_cards）**。途中でやめて再開しても満タンに戻らない（0/40→3枚やって0/37）。日付が変わると上限にリセット。

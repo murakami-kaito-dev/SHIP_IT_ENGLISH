@@ -12,6 +12,8 @@ import 'package:ship_it_english/shared/widgets/gradient_button.dart';
 import 'package:ship_it_english/shared/widgets/progress_bar.dart';
 import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/streak_widget.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
+import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -80,6 +82,9 @@ class HomeScreen extends ConsumerWidget {
                 data: (info) =>
                     _buildSessionSection(context, ref, info, strings),
               ),
+              const SizedBox(height: 24),
+              // 通算で獲得した経験値（XP）とレベルを確認できるカード
+              _LevelCard(strings: strings),
               const SizedBox(height: 24),
               weekly.when(
                 loading: () => const SizedBox.shrink(),
@@ -215,6 +220,59 @@ class HomeScreen extends ConsumerWidget {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 通算で獲得した経験値（XP）と現在のレベルを表示するカード。
+/// 学習の積み上げが一目で分かる「経験値を確認する場所」。
+class _LevelCard extends ConsumerWidget {
+  final AppStrings strings;
+  const _LevelCard({required this.strings});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final snap = ref.watch(gamificationProvider).snapshot;
+    final remaining = (snap.xpForNextLevel - snap.xpIntoLevel).clamp(0, 1 << 30);
+
+    return Container(
+      width: double.infinity,
+      padding: AppTheme.cardPadding,
+      decoration: AppTheme.cardDecoration,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.auto_awesome_rounded,
+                      size: 18, color: AppTheme.primary),
+                  const SizedBox(width: 6),
+                  Text(strings.levelTitle, style: AppTheme.headingMedium),
+                ],
+              ),
+              // 通算XP（積み上げの総量）
+              Text(
+                strings.totalXpValue(snap.totalXp),
+                style: AppTheme.monoNumber.copyWith(color: AppTheme.primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // LVバッジ＋イージング付きXPゲージ（現在レベル内の進捗）
+          const XPProgressBar(),
+          const SizedBox(height: 10),
+          Text(
+            strings.xpToNext(remaining, snap.level + 1),
+            style: AppTheme.captionText,
+          ),
+          const SizedBox(height: 2),
+          Text(strings.levelCaption, style: AppTheme.captionText),
         ],
       ),
     );

@@ -28,11 +28,15 @@
 
 ## 五感フィードバック（[sound_service.dart](../../../lib/core/services/sound_service.dart)）
 - `SoundService`（singleton）に tap/correct/combo/fever/levelUp/celebrate/retry のフック。
-- 現状はハプティクス＋`SystemSound`（音声アセット無し・オフライン）。**実SFXは `_sfx()` をローカルアセット再生に差し替え**。
+- **実SFXを再生**：事前生成した効果音 `assets/audio/sfx/{correct,combo,fever,levelup}.m4a`（純Dart合成→`afconvert`でAAC・各5〜8KB・**オフライン非通信**）を `audioplayers` で再生。ハプティクスも併用。
+  - correct=軽い上昇2音／combo=明るいベル（**コンボ数に応じ `setPlaybackRate` でピッチ上昇**・上限1.6）／fever=きらめくアルペジオ／levelUp=ファンファーレ／celebrate=ファンファーレ流用。
+  - **retry（不正解）は音を出さない**（触覚のみ・負の感情を軽減）／tap も音なし（触覚のみ）。
+  - 再生失敗時は `SystemSound.click` にフォールバック。AudioContext は playback+mixWithOthers（サイレントスイッチでも鳴る／発音音声と混ざる）。
 - **直接 HapticFeedback を撒かず必ず SoundService 経由**。
+- SFXの音そのものを作り直す場合の合成レシピは開発メモに残す（`_render`＝基音＋オクターブ＋5度のベル風・指数減衰）。
 
 ## 統合ポイント
 - Study：`_handleRating` で `registerAnswer`→エフェクト発火、レベルアップで `showLevelUpModal`。
 - SessionComplete：`ConfettiCelebration`＋`StreakWidget(large)`＋獲得XP＋`XPProgressBar`。
-- Home：ヘッダー `StreakWidget`（目標達成で強発光）。
+- Home：ヘッダー `StreakWidget`（目標達成で強発光）＋ **`_LevelCard`（通算XP `totalXpValue` ＋ `XPProgressBar` ＋ 次LVまでの残りXP `xpToNext`）＝獲得経験値を常設で確認できる場所**。
 - CTA `GradientButton` は押下 scale(0.95) spring（`onHighlightChanged`駆動）。

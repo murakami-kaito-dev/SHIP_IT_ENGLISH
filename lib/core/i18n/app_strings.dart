@@ -366,6 +366,23 @@ class AppStrings {
       ? 'うち習得済み $mastered'
       : '$mastered mastered';
 
+  // --- レベル / 経験値（ゲーミフィケーション） ---
+  String get levelTitle => mode == LanguageMode.ja ? 'レベル' : 'Level';
+
+  /// 通算で獲得したXPの総量。
+  String totalXpValue(int xp) =>
+      mode == LanguageMode.ja ? '通算 $xp XP' : 'Total $xp XP';
+
+  /// 次のレベルまでに必要な残りXP。
+  String xpToNext(int remaining, int nextLevel) => mode == LanguageMode.ja
+      ? 'あと $remaining XP で LV $nextLevel'
+      : '$remaining XP to LV $nextLevel';
+
+  /// レベルの意味を説明するキャプション（学習量の証）。
+  String get levelCaption => mode == LanguageMode.ja
+      ? 'カードに正解するとXPが貯まり、レベルが上がります'
+      : 'Answer cards correctly to earn XP and level up';
+
   String correctWithAccuracy(int correct, int accuracy) =>
       '$correct ($accuracy%)';
 
