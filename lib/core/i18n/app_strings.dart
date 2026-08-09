@@ -35,7 +35,6 @@ class AppStrings {
   final String studyScopeReviewOnly;
   final String studyScopeBoth;
   final String sessionTotalLabel;
-  final String reviewDueNote;
   final String startLearning;
   final String sessionCompleteToday;
   final String reviewAgain;
@@ -193,7 +192,6 @@ class AppStrings {
     required this.studyScopeReviewOnly,
     required this.studyScopeBoth,
     required this.sessionTotalLabel,
-    required this.reviewDueNote,
     required this.startLearning,
     required this.sessionCompleteToday,
     required this.reviewAgain,
@@ -476,7 +474,6 @@ class AppStrings {
     studyScopeReviewOnly: '復習のみ',
     studyScopeBoth: '両方',
     sessionTotalLabel: '合計',
-    reviewDueNote: '期限が来た分',
     startLearning: '学習を始める',
     sessionCompleteToday: '今日のセッション完了！',
     reviewAgain: 'もう一度復習する',
@@ -608,7 +605,6 @@ class AppStrings {
     studyScopeReviewOnly: 'Review',
     studyScopeBoth: 'Both',
     sessionTotalLabel: 'Total',
-    reviewDueNote: 'due for review',
     startLearning: 'Start Learning',
     sessionCompleteToday: "Today's session complete!",
     reviewAgain: 'Review again',

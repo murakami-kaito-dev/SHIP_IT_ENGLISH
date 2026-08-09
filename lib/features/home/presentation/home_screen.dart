@@ -333,22 +333,11 @@ class _TodaySessionCard extends ConsumerWidget {
           // 復習（新規のみ選択時は薄く）
           Opacity(
             opacity: scope == StudyScope.newOnly ? 0.35 : 1.0,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _InfoRow(
-                  icon: Icons.refresh_rounded,
-                  iconColor: AppTheme.ratingUncertain,
-                  label: strings.reviewCards,
-                  value: strings.cardsCount(info.reviewCardsCount),
-                ),
-                if (info.reviewCardsCount > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 32, top: 2, bottom: 2),
-                    child: Text('（${strings.reviewDueNote}）',
-                        style: AppTheme.captionText),
-                  ),
-              ],
+            child: _InfoRow(
+              icon: Icons.refresh_rounded,
+              iconColor: AppTheme.ratingUncertain,
+              label: strings.reviewCards,
+              value: strings.cardsCount(info.reviewCardsCount),
             ),
           ),
           const Divider(height: 22),
