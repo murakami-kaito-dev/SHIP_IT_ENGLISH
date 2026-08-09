@@ -21,14 +21,14 @@
 - **繰り返しモード**（`repeat`）：OFF=最後で停止し `finished`（「再生完了」→もう一度）。ON=先頭へループ（音楽プレイヤー式）。
 - **速度**（`speed`・`kListenSpeeds`=0.75/1.0/1.25/1.5）。速度・繰り返しは prefs 永続化（`keyListenSpeed`/`keyListenRepeat`）。
   - **速度変更は再生中のクリップにも即時反映**：`setSpeed` が `TtsService.setPlaybackRate`→`AudioClipService.setPlaybackRate`（`_player.setPlaybackRate`）を呼ぶ。`playAndWait` も毎回 `setPlaybackRate(rate)`（1.0でも）して前クリップの倍率持ち越しを防ぐ。
-- **シーク**：`jumpTo(index)` でその位置のカードから再生（キュー行タップ／全体シークバーのつまみ）。
+- **シーク**：`jumpTo(index)` でその位置の**カード**へ移動（キュー行タップ）。`seekToLine(line)` で**現在カード内の行**から再生し直す（シークバー＝1アイテム内の位置調整。カードは移動しない）。
 - 停止/一時停止/スキップ/並べ替えは `_runToken`（世代トークン）で進行中ループを無効化して制御。`dispose` で停止。
 - **バックグラウンド/画面ロック再生**：`ios/Runner/Info.plist` の `UIBackgroundModes=[audio]`＋`playback` カテゴリで、スリープ・アプリ切替中も再生継続。
 
 ## プレイヤーUI（[listening_screen.dart](../../../lib/features/listening/presentation/listening_screen.dart)）
 - `AppBackground(Scaffold(...))`（フルスクリーン遷移の作法）。
 - **画面全体が1枚の縦スクロール**（`CustomScrollView`）：先頭 sliver が**画面いっぱいの再生画面**（`SizedBox(height: viewportH)` の `_PlayerBody`）、その下に**続きとして「次に再生」キュー**（`_QueueHeader`＋`SliverReorderableList`）。**別画面/モーダルではなく画面の続き**として下へスクロールすると現れる（下端の狭いスワイプに依存しない＝iPhoneのホーム操作と競合しない）。
-- 再生画面：進捗／現在カード（4行・再生中行ハイライト＋`graphic_eq`）／**全体シークバー `_SeekBar`**（つまみドラッグ→離した位置のカードへ `jumpTo`）／繰り返しトグル・速度セレクタ／⏮ 再生⏸ ⏭／下スクロール誘導ハンドル `_RevealHandle`（タップで `animateTo(viewportH)`）。
+- 再生画面：進捗／現在カード（4行・再生中行ハイライト＋`graphic_eq`）／**シークバー `_SeekBar`**（このカードの4行を表し、つまみドラッグ→離した行から `seekToLine` で再生し直す＝1アイテム内の位置調整）／繰り返しトグル・速度セレクタ／⏮ 再生⏸ ⏭／下スクロール誘導ハンドル `_RevealHandle`（タップで `animateTo(viewportH)`）。
 - キュー：`SliverReorderableList`＋右の `drag_handle`（`ReorderableDragStartListener`）でドラッグ並べ替え（`reorder`。再生中カードは追従）。行タップで `jumpTo`。
 
 ## 音声基盤の変更（[tts-audio.md](tts-audio.md) と共通）

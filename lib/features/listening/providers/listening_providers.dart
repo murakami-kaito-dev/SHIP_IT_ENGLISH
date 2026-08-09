@@ -111,8 +111,20 @@ class ListeningController extends StateNotifier<ListeningState> {
   void next() => _seek(state.index + 1, autoplay: state.isPlaying);
   void previous() => _seek(state.index - 1, autoplay: state.isPlaying);
 
-  /// キュー内の特定カードへ移動して再生する（キュー行タップ／シークバー用）。
+  /// キュー内の特定カードへ移動して再生する（キュー行タップ用）。
   void jumpTo(int index) => _seek(index, autoplay: true);
+
+  /// **現在のカード内**で、指定の行（0..3）から再生し直す（シークバー用）。
+  /// カードは移動せず、そのアイテムのどの位置から流すかを変える。
+  void seekToLine(int line) {
+    if (state.isEmpty) return;
+    final count = speechLinesFor(state.current!, state.mode).length;
+    final clamped = line.clamp(0, count - 1);
+    _runToken++;
+    unawaited(_tts.stop());
+    state = state.copyWith(line: clamped, finished: false, isPlaying: false);
+    play();
+  }
 
   void _seek(int target, {required bool autoplay}) {
     if (state.isEmpty) return;

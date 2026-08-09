@@ -218,11 +218,11 @@ class _PlayerBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // 全体シークバー（つまみをドラッグでその位置のカードから再生）
+          // シークバー（このカード内のどの行から流すか。つまみで位置調整）
           _SeekBar(
-            index: st.index,
-            total: st.queue.length,
-            onSeek: controller.jumpTo,
+            position: st.line,
+            count: lines.length,
+            onSeek: controller.seekToLine,
           ),
           const SizedBox(height: 8),
           Row(
@@ -280,13 +280,14 @@ class _PlayerBody extends StatelessWidget {
   }
 }
 
-/// 全体の再生位置を表すシークバー。つまみをドラッグしてその位置のカードへ移動。
+/// このカード内の再生位置（どの行から流すか）を表すシークバー。
+/// つまみをドラッグして離すと、その行から再生し直す（カードは移動しない）。
 class _SeekBar extends StatefulWidget {
-  final int index;
-  final int total;
+  final int position; // 現在の行 0..count-1
+  final int count; // このカードの行数（=4）
   final ValueChanged<int> onSeek;
   const _SeekBar(
-      {required this.index, required this.total, required this.onSeek});
+      {required this.position, required this.count, required this.onSeek});
 
   @override
   State<_SeekBar> createState() => _SeekBarState();
@@ -297,10 +298,10 @@ class _SeekBarState extends State<_SeekBar> {
 
   @override
   Widget build(BuildContext context) {
-    final total = widget.total;
+    final total = widget.count;
     final maxV = (total - 1).toDouble();
     final value =
-        (_drag ?? widget.index.toDouble()).clamp(0.0, maxV < 0 ? 0.0 : maxV);
+        (_drag ?? widget.position.toDouble()).clamp(0.0, maxV < 0 ? 0.0 : maxV);
     final shown = value.round() + 1;
 
     return Column(
