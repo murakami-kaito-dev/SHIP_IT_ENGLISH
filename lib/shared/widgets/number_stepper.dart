@@ -151,37 +151,26 @@ class _NumberStepperState extends State<NumberStepper> {
                   .copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
         ],
-        // 四角い数値入力欄（枠線なし・淡色ベタ塗り）
-        Container(
-          decoration: BoxDecoration(
-            color: AppTheme.primaryLight,
-            borderRadius: BorderRadius.circular(10),
+        // 数値入力欄（従来どおり枠線ありのコンパクトなフィールド）
+        TextField(
+          controller: _controller,
+          focusNode: _focus,
+          textAlign: TextAlign.center,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.done,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          style: AppTheme.monoNumber.copyWith(color: AppTheme.primary),
+          decoration: const InputDecoration(
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(vertical: 8),
+            border: OutlineInputBorder(),
           ),
-          child: TextField(
-            controller: _controller,
-            focusNode: _focus,
-            textAlign: TextAlign.center,
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.done,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: AppTheme.monoNumberLarge.copyWith(
-              color: AppTheme.primary,
-              fontSize: 22,
-            ),
-            decoration: const InputDecoration(
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(vertical: 12),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-            ),
-            onChanged: (t) {
-              final n = int.tryParse(t.trim());
-              if (n != null) _emit(n);
-            },
-            onSubmitted: (_) => _focus.unfocus(),
-            onTapOutside: (_) => _focus.unfocus(),
-          ),
+          onChanged: (t) {
+            final n = int.tryParse(t.trim());
+            if (n != null) _emit(n);
+          },
+          onSubmitted: (_) => _focus.unfocus(),
+          onTapOutside: (_) => _focus.unfocus(),
         ),
         const SizedBox(height: 8),
         // 下に − / ＋（長押し加速）
