@@ -11,7 +11,6 @@ import 'package:ship_it_english/features/settings/providers/settings_providers.d
 import 'package:ship_it_english/features/study/presentation/widgets/range_study_sheet.dart';
 import 'package:ship_it_english/shared/widgets/gradient_button.dart';
 import 'package:ship_it_english/shared/widgets/progress_bar.dart';
-import 'package:ship_it_english/shared/widgets/section_header.dart';
 import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/streak_widget.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
@@ -110,36 +109,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     _buildSessionSection(context, ref, info, strings),
               ),
               const SizedBox(height: 24),
-              // 通算で獲得した経験値（XP）とレベル（見出しはカードの外・上）
-              SectionHeader(strings.levelTitle),
+              // 通算で獲得した経験値（XP）とレベルを確認できるカード
               _LevelCard(strings: strings),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               // XPで交換する特典：ストリーク保護
-              SectionHeader(strings.streakShieldTitle),
               _StreakShieldCard(strings: strings),
               const SizedBox(height: 24),
               weekly.when(
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
-                data: (days) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SectionHeader(strings.weeklyTitle),
+                data: (days) =>
                     _WeeklySummaryCard(days: days, strings: strings),
-                  ],
-                ),
               ),
               const SizedBox(height: 24),
               progress.when(
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
-                data: (p) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SectionHeader(strings.progressTitle),
-                    _buildProgressSection(p, strings),
-                  ],
-                ),
+                data: (p) => _buildProgressSection(p, strings),
               ),
             ],
           ),
@@ -184,39 +170,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         const SizedBox(height: 20),
         if (allMastered)
           _AllMasteredCard(strings: strings)
-        else ...[
-          // 見出し（カードの外・上）：今日のセッション ＋ 完了チップ ＋ ?ヘルプ
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Row(
-              children: [
-                Text(
-                  strings.todaysSession,
-                  style: AppTheme.captionText.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-                // 今日の学習が済んでいたら小さく完了を示す
-                if (info.hasStudiedToday) ...[
-                  const SizedBox(width: 8),
-                  _SessionDoneChip(label: strings.sessionDoneChip),
-                ],
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.help_outline_rounded, size: 20),
-                  color: AppTheme.textTertiary,
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  tooltip: strings.sessionHelpTooltip,
-                  onPressed: () => _showSessionHelp(context, strings),
-                ),
-              ],
-            ),
-          ),
+        else
+          // 完了マーク・各行・合計・操作ボタンをすべて白カード内にまとめる
           _TodaySessionCard(info: info, strings: strings),
-        ],
       ],
     );
   }
@@ -228,7 +184,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 見出し「学習進捗」はカードの外・上へ移動済み
+          Text(strings.progressTitle, style: AppTheme.headingMedium),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -277,36 +234,17 @@ class _LevelCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 称号ピル（左）＋ 通算XP（右）。見出し「レベル」はカードの外・上へ移動済み。
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 現在の称号（キャリアラダー）＝レベルの意味づけ
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryLight,
-                  borderRadius: BorderRadius.circular(20),
-                  border:
-                      Border.all(color: AppTheme.primary.withOpacity(0.35)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.workspace_premium_rounded,
-                        size: 15, color: AppTheme.primary),
-                    const SizedBox(width: 5),
-                    Text(
-                      strings.rankName(rank),
-                      style: AppTheme.bodyText.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.auto_awesome_rounded,
+                      size: 18, color: AppTheme.primary),
+                  const SizedBox(width: 6),
+                  Text(strings.levelTitle, style: AppTheme.headingMedium),
+                ],
               ),
               // 通算XP（積み上げの総量）
               Text(
@@ -314,6 +252,31 @@ class _LevelCard extends ConsumerWidget {
                 style: AppTheme.monoNumber.copyWith(color: AppTheme.primary),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          // 現在の称号（キャリアラダー）＝レベルの意味づけ
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryLight,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.primary.withOpacity(0.35)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.workspace_premium_rounded,
+                    size: 15, color: AppTheme.primary),
+                const SizedBox(width: 5),
+                Text(
+                  strings.rankName(rank),
+                  style: AppTheme.bodyText.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primary,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 14),
           // LVバッジ＋イージング付きXPゲージ（現在レベル内の進捗）
@@ -350,38 +313,45 @@ class _StreakShieldCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 所持（盾＋N/M・左）＋ 使えるXP（右）。見出しはカードの外・上へ移動済み。
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (var i = 0;
-                      i < GamificationConfig.maxStreakFreezes;
-                      i++)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: Icon(
-                        Icons.shield_rounded,
-                        size: 26,
-                        color: i < g.streakFreezes
-                            ? AppTheme.streakFire
-                            : AppTheme.surfaceBorder,
-                      ),
-                    ),
-                  const SizedBox(width: 4),
-                  Text(
-                    strings.streakShieldOwned(g.streakFreezes,
-                        GamificationConfig.maxStreakFreezes),
-                    style: AppTheme.captionText,
-                  ),
+                  const Icon(Icons.shield_rounded,
+                      size: 18, color: AppTheme.streakFire),
+                  const SizedBox(width: 6),
+                  Text(strings.streakShieldTitle,
+                      style: AppTheme.headingMedium),
                 ],
               ),
               // 使えるXP（交換に使える残高）
               Text(
                 strings.availableXpLabel(g.availableXp),
                 style: AppTheme.monoNumber.copyWith(color: AppTheme.primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // 所持数を盾アイコンで可視化
+          Row(
+            children: [
+              for (var i = 0; i < GamificationConfig.maxStreakFreezes; i++)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Icon(
+                    Icons.shield_rounded,
+                    size: 26,
+                    color: i < g.streakFreezes
+                        ? AppTheme.streakFire
+                        : AppTheme.surfaceBorder,
+                  ),
+                ),
+              const SizedBox(width: 4),
+              Text(
+                strings.streakShieldOwned(
+                    g.streakFreezes, GamificationConfig.maxStreakFreezes),
+                style: AppTheme.captionText,
               ),
             ],
           ),
@@ -450,6 +420,28 @@ class _TodaySessionCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Text(strings.todaysSession, style: AppTheme.headingMedium),
+              // 今日の学習が済んでいたら、タイトル横の余白に小さく完了を示す
+              if (info.hasStudiedToday) ...[
+                const SizedBox(width: 10),
+                _SessionDoneChip(label: strings.sessionDoneChip),
+              ],
+              const Spacer(),
+              // 仕様がわかりにくいので「?」でヘルプを開けるようにする
+              IconButton(
+                icon: const Icon(Icons.help_outline_rounded, size: 20),
+                color: AppTheme.textTertiary,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                tooltip: strings.sessionHelpTooltip,
+                onPressed: () => _showSessionHelp(context, strings),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           // 学習範囲の選択（新規のみ / 復習のみ / 両方）。合計はこの選択で変わる。
           SizedBox(
             width: double.infinity,
@@ -753,7 +745,8 @@ class _WeeklySummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 見出し「今週の学習」はカードの外・上へ移動済み
+          Text(strings.weeklyTitle, style: AppTheme.headingMedium),
+          const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
