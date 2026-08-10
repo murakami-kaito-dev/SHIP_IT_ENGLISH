@@ -191,18 +191,25 @@ class _PresetButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: AppTheme.captionText.copyWith(
-                  color: selected ? Colors.white : AppTheme.textSecondary,
-                  fontWeight: FontWeight.w600,
+              // 名前は幅に合わせて自動縮小し、必ず全文が1行で収まるようにする
+              // （「スタンダード」「スピード学習」が省略されないように）。
+              SizedBox(
+                width: double.infinity,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: AppTheme.captionText.copyWith(
+                      color: selected ? Colors.white : AppTheme.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 2),
