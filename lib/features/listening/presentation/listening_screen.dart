@@ -225,12 +225,8 @@ class _PlayerBody extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // カード全体（4行を1本のタイムライン）の秒シークバー
-          _SeekBar(
-            currentLine: st.line,
-            lineDurations: st.lineDurations,
-            onSeek: controller.seekToGlobal,
-          ),
+          // 今流れている1音源（現在の行のクリップ）の秒シークバー
+          const _SeekBar(),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -290,14 +286,10 @@ class _PlayerBody extends StatelessWidget {
 /// **カード全体（4行を1本のタイムライン）**の秒シークバー。
 /// 4クリップの長さを連結した通算秒でスクラブし、離した位置（該当行＋オフセット）
 /// から再生する。
+/// 今流れている**単一音源（現在の行のクリップ）**の秒シークバー。
+/// クリップ内を 0〜長さ で滑らかに動き、離すとその秒位置へシークする。
 class _SeekBar extends StatefulWidget {
-  final int currentLine;
-  final List<Duration> lineDurations;
-  final ValueChanged<Duration> onSeek;
-  const _SeekBar(
-      {required this.currentLine,
-      required this.lineDurations,
-      required this.onSeek});
+  const _SeekBar();
 
   @override
   State<_SeekBar> createState() => _SeekBarState();
@@ -305,55 +297,33 @@ class _SeekBar extends StatefulWidget {
 
 class _SeekBarState extends State<_SeekBar> {
   final _clip = AudioClipService();
-  Duration _clipPos = Duration.zero; // 現在行クリップ内の位置
-  double? _drag; // ドラッグ中の通算ミリ秒
-
-  // ドラッグを離した直後、実際の再生位置が追いつくまでつまみをこの値で保持する。
-  // 離した瞬間に live 値へ戻すと、行/クリップ位置が一時的に食い違ってつまみが
-  // カクッと飛ぶ（ちらつく）ため、目標へ到達するまで固定する。
-  double? _hold;
-  int _holdLine = -1;
-  Timer? _holdTimer; // 保険：一定時間で必ず解除
-
+  Duration _pos = Duration.zero; // クリップ内の再生位置
+  Duration _dur = Duration.zero; // クリップの長さ
+  double? _drag; // ドラッグ中のミリ秒
   StreamSubscription<Duration>? _posSub;
+  StreamSubscription<Duration>? _durSub;
 
   @override
   void initState() {
     super.initState();
     _posSub = _clip.onPositionChanged.listen((d) {
-      if (!mounted || _drag != null) return;
-      setState(() {
-        _clipPos = d;
-        // シーク先の行に実際に移り、live が目標付近に来たら保持を解除
-        if (_hold != null && widget.currentLine == _holdLine) {
-          final live = (_cumBeforeMs + _clampedClipMs).toDouble();
-          if ((live - _hold!).abs() < 600) _clearHold();
-        }
-      });
+      if (mounted && _drag == null) setState(() => _pos = d);
     });
-  }
-
-  @override
-  void didUpdateWidget(covariant _SeekBar old) {
-    super.didUpdateWidget(old);
-    // 行が変わった瞬間は前クリップの再生位置が残っていて通算値が1フレーム飛ぶ
-    // （＝境界でのチラつき）。位置を0に戻し、次のtickから正しく積み上げる。
-    if (widget.currentLine != old.currentLine) {
-      _clipPos = Duration.zero;
-    }
-  }
-
-  void _clearHold() {
-    _hold = null;
-    _holdLine = -1;
-    _holdTimer?.cancel();
-    _holdTimer = null;
+    _durSub = _clip.onDurationChanged.listen((d) {
+      // 新しいクリップ（＝行/カード切替）になったら長さを差し替え、位置は0起点に
+      if (mounted) {
+        setState(() {
+          _dur = d;
+          if (_drag == null) _pos = Duration.zero;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
     _posSub?.cancel();
-    _holdTimer?.cancel();
+    _durSub?.cancel();
     super.dispose();
   }
 
@@ -362,35 +332,12 @@ class _SeekBarState extends State<_SeekBar> {
     return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
   }
 
-  int get _totalMs =>
-      widget.lineDurations.fold(0, (a, b) => a + b.inMilliseconds);
-
-  int get _curLineMs => widget.currentLine < widget.lineDurations.length
-      ? widget.lineDurations[widget.currentLine].inMilliseconds
-      : 0;
-
-  int get _clampedClipMs => _clipPos.inMilliseconds.clamp(0, _curLineMs);
-
-  // 現在行より前の行の長さの合計（通算オフセットの基点）
-  int get _cumBeforeMs {
-    var s = 0;
-    for (var i = 0;
-        i < widget.currentLine && i < widget.lineDurations.length;
-        i++) {
-      s += widget.lineDurations[i].inMilliseconds;
-    }
-    return s;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final totalMs = _totalMs;
-    final hasTimeline = totalMs > 0 && widget.lineDurations.isNotEmpty;
-
-    final liveGlobal = (_cumBeforeMs + _clampedClipMs).toDouble();
-    // 表示は「ドラッグ中 > 離した直後の保持 > ライブ位置」の優先順
-    final value =
-        (_drag ?? _hold ?? liveGlobal).clamp(0.0, totalMs.toDouble());
+    final totalMs = _dur.inMilliseconds;
+    final hasClip = totalMs > 0;
+    final posMs =
+        (_drag ?? _pos.inMilliseconds.toDouble()).clamp(0.0, totalMs.toDouble());
 
     return Column(
       children: [
@@ -404,23 +351,16 @@ class _SeekBarState extends State<_SeekBar> {
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
           ),
           child: Slider(
-            value: hasTimeline ? value : 0,
+            value: hasClip ? posMs : 0,
             min: 0,
-            max: hasTimeline ? totalMs.toDouble() : 1,
-            onChanged: hasTimeline ? (v) => setState(() => _drag = v) : null,
-            onChangeEnd: hasTimeline
+            max: hasClip ? totalMs.toDouble() : 1,
+            onChanged: hasClip ? (v) => setState(() => _drag = v) : null,
+            onChangeEnd: hasClip
                 ? (v) {
-                    widget.onSeek(Duration(milliseconds: v.round()));
-                    final r = lineAtGlobal(
-                        widget.lineDurations, Duration(milliseconds: v.round()));
+                    _clip.seek(Duration(milliseconds: v.round()));
                     setState(() {
-                      _hold = v;
-                      _holdLine = r.line;
+                      _pos = Duration(milliseconds: v.round());
                       _drag = null;
-                    });
-                    _holdTimer?.cancel();
-                    _holdTimer = Timer(const Duration(milliseconds: 1500), () {
-                      if (mounted) setState(_clearHold);
                     });
                   }
                 : null,
@@ -431,7 +371,7 @@ class _SeekBarState extends State<_SeekBar> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(_fmt(value.round()), style: AppTheme.monoLabel),
+              Text(_fmt(posMs.round()), style: AppTheme.monoLabel),
               Text(_fmt(totalMs), style: AppTheme.monoLabel),
             ],
           ),

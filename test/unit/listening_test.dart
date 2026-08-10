@@ -48,41 +48,6 @@ void main() {
     });
   });
 
-  group('lineAtGlobal（カード全体の秒→行変換）', () {
-    // 各行 1000ms（合計4000ms）
-    final durs = List.filled(4, const Duration(milliseconds: 1000));
-
-    test('先頭は行0・オフセット0', () {
-      final r = lineAtGlobal(durs, Duration.zero);
-      expect(r.line, 0);
-      expect(r.offset, Duration.zero);
-    });
-
-    test('行の途中はその行＋行内オフセット', () {
-      final r = lineAtGlobal(durs, const Duration(milliseconds: 2500));
-      expect(r.line, 2);
-      expect(r.offset, const Duration(milliseconds: 500));
-    });
-
-    test('境界ちょうどは次の行の頭', () {
-      final r = lineAtGlobal(durs, const Duration(milliseconds: 2000));
-      expect(r.line, 2);
-      expect(r.offset, Duration.zero);
-    });
-
-    test('総和を超えたら最終行の末尾に丸める', () {
-      final r = lineAtGlobal(durs, const Duration(milliseconds: 99999));
-      expect(r.line, 3);
-      expect(r.offset, const Duration(milliseconds: 1000));
-    });
-
-    test('負値は先頭に丸める', () {
-      final r = lineAtGlobal(durs, const Duration(milliseconds: -500));
-      expect(r.line, 0);
-      expect(r.offset, Duration.zero);
-    });
-  });
-
   group('ListeningState', () {
     test('初期状態は空・停止・1.0倍', () {
       const s = ListeningState.initial;
