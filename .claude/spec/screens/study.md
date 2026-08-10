@@ -8,7 +8,7 @@
 - 通常デイリー：`loadSession(maxNewCards)`（復習期限到来分＋残り新規枠）。
 - `mode=practice`：`loadPracticeSession`（今日学習した未習得＋期限切れを苦手順）。
 - `category` + `from`/`to`(+`statuses`,`order`)：`loadCategoryStudySession`（範囲/状況/順序指定）。
-  - 範囲指定は `range_study_sheet.dart`。番号の最小#/最大#は**ダイヤルピッカー**（共通 [shared/widgets/dial_picker.dart](../../../lib/shared/widgets/dial_picker.dart) `DialPicker`＝`CupertinoPicker`ベース・学習枚数設定と同一）を左右に2つ（`_RangeMinMaxSelector`・StatefulWidget）。**常に 最小#≦最大# を維持**：最小を上げて最大を超えたら最大も連動して上がり、最大を下げて最小を下回ったら最小も連動して下がる（連動スクロールは `_prog` フラグで二重更新防止）。カテゴリ詳細の「学習/聴く」から開き、`RangeSheetMode` で学習/耳学を出し分け（[systems/listening.md](../systems/listening.md)）。
+  - 範囲指定は `range_study_sheet.dart`。番号の最小#/最大#は**ダイヤルピッカー**（共通 [shared/widgets/dial_picker.dart](../../../lib/shared/widgets/dial_picker.dart) `DialPicker`＝`CupertinoPicker`ベース・学習枚数設定と同一）を左右に2つ（`_RangeMinMaxSelector`・StatefulWidget）。**常に 最小#≦最大# を維持**：最小を上げて最大を超えたら最大を最小まで**即ジャンプ連動**、最大を下げて最小を下回ったら最小を最大まで即ジャンプ連動。フラグは**左右独立**（`_syncingMin`/`_syncingMax`＋postframe解除）＝連動側だけ onChanged を無視し、フリング中も反対側のユーザー操作を止めない（共有フラグだと最終値の連動が伝わらず 最小#＞最大# が成立してしまうため）。カテゴリ詳細の「学習/聴く」から開き、`RangeSheetMode` で学習/耳学を出し分け（[systems/listening.md](../systems/listening.md)）。
 - 無料プランは新規カードの出所を `freeCategoryIds` に限定。
 
 ## 画面構成

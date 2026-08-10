@@ -377,8 +377,11 @@ class _RangeMinMaxSelectorState extends State<_RangeMinMaxSelector> {
   late final FixedExtentScrollController _maxCtrl =
       FixedExtentScrollController(initialItem: _idx(widget.end));
 
-  /// プログラムによるスクロール中は onChanged を無視（連動時の二重更新防止）。
-  bool _prog = false;
+  // 左右それぞれの「プログラム移動中」フラグ。片側を連動させても反対側の
+  // ユーザー操作はブロックしない（共有フラグにするとフリング中に連動が伝わらず
+  // 最小#＞最大# が成立してしまうため、左右で独立させる）。
+  bool _syncingMin = false;
+  bool _syncingMax = false;
 
   int get _max => math.max(1, widget.maxNumber);
   int _idx(int v) => v.clamp(1, _max) - 1;
@@ -386,50 +389,58 @@ class _RangeMinMaxSelectorState extends State<_RangeMinMaxSelector> {
   @override
   void didUpdateWidget(covariant _RangeMinMaxSelector old) {
     super.didUpdateWidget(old);
-    // カテゴリ変更で総数が変わったら、両ホイールを新しい範囲へ再配置
+    // カテゴリ変更（総数変化）: 次フレームで両ホイールを新しい範囲へ再配置
     if (widget.maxNumber != old.maxNumber) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _prog = true;
-        if (_minCtrl.hasClients) _minCtrl.jumpToItem(_idx(widget.start));
-        if (_maxCtrl.hasClients) _maxCtrl.jumpToItem(_idx(widget.end));
-        _prog = false;
+        _jumpMin(widget.start);
+        _jumpMax(widget.end);
       });
       return;
     }
-    if (!_prog) {
-      _syncTo(_minCtrl, widget.start, old.start);
-      _syncTo(_maxCtrl, widget.end, old.end);
-    }
+    // 外部要因で値が変わったらホイールを合わせる（ユーザー操作起因は既に一致）
+    if (widget.start != old.start) _jumpMin(widget.start);
+    if (widget.end != old.end) _jumpMax(widget.end);
   }
 
-  /// 外部要因（連動・クランプ）で値が変わったらホイールを追従（ユーザー操作中の
-  /// 同じ位置なら何もしない）。
-  void _syncTo(FixedExtentScrollController ctrl, int value, int oldValue) {
-    if (value == oldValue || !ctrl.hasClients) return;
-    if (ctrl.selectedItem == _idx(value)) return;
-    _prog = true;
-    ctrl
-        .animateToItem(_idx(value),
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutCubic)
-        .whenComplete(() => _prog = false);
+  /// 反対側ホイールを即座に合わせる（連動）。ジャンプ中はその側の onChanged を
+  /// 無視して通知1回による無限ループを防ぐ。既に同じ位置なら何もしない。
+  void _jumpMin(int v) {
+    if (!_minCtrl.hasClients || _minCtrl.selectedItem == _idx(v)) return;
+    _syncingMin = true;
+    _minCtrl.jumpToItem(_idx(v));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncingMin = false);
+  }
+
+  void _jumpMax(int v) {
+    if (!_maxCtrl.hasClients || _maxCtrl.selectedItem == _idx(v)) return;
+    _syncingMax = true;
+    _maxCtrl.jumpToItem(_idx(v));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncingMax = false);
   }
 
   void _onMin(int v) {
-    if (_prog) return;
+    if (_syncingMin) return;
     HapticFeedback.selectionClick();
-    // 最小が最大を超えたら最大も連動して上げる（最小#≦最大#を維持）
-    final newEnd = v > widget.end ? v : widget.end;
-    widget.onChanged(RangeValues(v.toDouble(), newEnd.toDouble()));
+    // 最小が最大を超えたら、最大を最小まで即連動（最小#≦最大# を必ず維持）
+    if (v > widget.end) {
+      _jumpMax(v);
+      widget.onChanged(RangeValues(v.toDouble(), v.toDouble()));
+    } else {
+      widget.onChanged(RangeValues(v.toDouble(), widget.end.toDouble()));
+    }
   }
 
   void _onMax(int v) {
-    if (_prog) return;
+    if (_syncingMax) return;
     HapticFeedback.selectionClick();
-    // 最大が最小を下回ったら最小も連動して下げる
-    final newStart = v < widget.start ? v : widget.start;
-    widget.onChanged(RangeValues(newStart.toDouble(), v.toDouble()));
+    // 最大が最小を下回ったら、最小を最大まで即連動
+    if (v < widget.start) {
+      _jumpMin(v);
+      widget.onChanged(RangeValues(v.toDouble(), v.toDouble()));
+    } else {
+      widget.onChanged(RangeValues(widget.start.toDouble(), v.toDouble()));
+    }
   }
 
   @override
