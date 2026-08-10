@@ -2,7 +2,7 @@ name: ship_it_english
 description: "海外テック企業で働くために必要な技術英語を毎日5〜10分の学習で習得するアプリ。"
 publish_to: 'none'
 
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: ^3.5.3
