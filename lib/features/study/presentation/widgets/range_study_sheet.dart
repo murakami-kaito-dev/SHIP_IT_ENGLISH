@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
@@ -7,7 +10,7 @@ import 'package:ship_it_english/core/monetization/monetization_config.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/categories/providers/categories_providers.dart';
-import 'package:ship_it_english/shared/widgets/number_stepper.dart';
+import 'package:ship_it_english/shared/widgets/dial_picker.dart';
 
 /// 範囲指定シートのモード。学習か、耳学（リスニング）か。
 /// 中身（カテゴリ・範囲・状況・順序）は共通で、最終ボタンと遷移先だけが変わる。
@@ -346,8 +349,10 @@ class _StartSectionState extends ConsumerState<_StartSection> {
 
 /// 番号範囲を「最小」「最大」それぞれのステッパー（上に入力欄・下に − / ＋）で指定。
 /// 最小は最大を超えず、最大は総数[maxNumber]を超えない（相互にクランプ）。
-/// − / ＋ は長押しで加速（`NumberStepper` 共通実装）。
-class _RangeMinMaxSelector extends StatelessWidget {
+/// 最小#・最大#を、学習枚数設定と同じ**ダイヤルピッカー**で選ぶ。
+/// 常に「最小# ≦ 最大#」を維持：最小を上げて最大を超えたら最大も連動して上がり、
+/// 最大を下げて最小を下回ったら最小も連動して下がる。
+class _RangeMinMaxSelector extends StatefulWidget {
   final int start;
   final int end;
   final int maxNumber;
@@ -363,35 +368,105 @@ class _RangeMinMaxSelector extends StatelessWidget {
   });
 
   @override
+  State<_RangeMinMaxSelector> createState() => _RangeMinMaxSelectorState();
+}
+
+class _RangeMinMaxSelectorState extends State<_RangeMinMaxSelector> {
+  late final FixedExtentScrollController _minCtrl =
+      FixedExtentScrollController(initialItem: _idx(widget.start));
+  late final FixedExtentScrollController _maxCtrl =
+      FixedExtentScrollController(initialItem: _idx(widget.end));
+
+  /// プログラムによるスクロール中は onChanged を無視（連動時の二重更新防止）。
+  bool _prog = false;
+
+  int get _max => math.max(1, widget.maxNumber);
+  int _idx(int v) => v.clamp(1, _max) - 1;
+
+  @override
+  void didUpdateWidget(covariant _RangeMinMaxSelector old) {
+    super.didUpdateWidget(old);
+    // カテゴリ変更で総数が変わったら、両ホイールを新しい範囲へ再配置
+    if (widget.maxNumber != old.maxNumber) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _prog = true;
+        if (_minCtrl.hasClients) _minCtrl.jumpToItem(_idx(widget.start));
+        if (_maxCtrl.hasClients) _maxCtrl.jumpToItem(_idx(widget.end));
+        _prog = false;
+      });
+      return;
+    }
+    if (!_prog) {
+      _syncTo(_minCtrl, widget.start, old.start);
+      _syncTo(_maxCtrl, widget.end, old.end);
+    }
+  }
+
+  /// 外部要因（連動・クランプ）で値が変わったらホイールを追従（ユーザー操作中の
+  /// 同じ位置なら何もしない）。
+  void _syncTo(FixedExtentScrollController ctrl, int value, int oldValue) {
+    if (value == oldValue || !ctrl.hasClients) return;
+    if (ctrl.selectedItem == _idx(value)) return;
+    _prog = true;
+    ctrl
+        .animateToItem(_idx(value),
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic)
+        .whenComplete(() => _prog = false);
+  }
+
+  void _onMin(int v) {
+    if (_prog) return;
+    HapticFeedback.selectionClick();
+    // 最小が最大を超えたら最大も連動して上げる（最小#≦最大#を維持）
+    final newEnd = v > widget.end ? v : widget.end;
+    widget.onChanged(RangeValues(v.toDouble(), newEnd.toDouble()));
+  }
+
+  void _onMax(int v) {
+    if (_prog) return;
+    HapticFeedback.selectionClick();
+    // 最大が最小を下回ったら最小も連動して下げる
+    final newStart = v < widget.start ? v : widget.start;
+    widget.onChanged(RangeValues(newStart.toDouble(), v.toDouble()));
+  }
+
+  @override
+  void dispose() {
+    _minCtrl.dispose();
+    _maxCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final s = widget.strings;
+    final count = _max;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: NumberStepper(
-            label: '${strings.rangeMin} #',
-            value: start,
-            min: 1,
-            max: end,
-            onChanged: (v) => onChanged(
-                RangeValues(v.clamp(1, end).toDouble(), end.toDouble())),
-          ),
-        ),
+        Expanded(child: _labeled('${s.rangeMin} #', _minCtrl, count, _onMin)),
         Padding(
-          padding: const EdgeInsets.only(top: 30, left: 8, right: 8),
+          padding: const EdgeInsets.only(top: 34, left: 8, right: 8),
           child: Text('〜',
               style: AppTheme.bodyText.copyWith(color: AppTheme.textTertiary)),
         ),
-        Expanded(
-          child: NumberStepper(
-            label: '${strings.rangeMax} #',
-            value: end,
-            min: start,
-            max: maxNumber,
-            onChanged: (v) => onChanged(RangeValues(
-                start.toDouble(), v.clamp(start, maxNumber).toDouble())),
-          ),
-        ),
+        Expanded(child: _labeled('${s.rangeMax} #', _maxCtrl, count, _onMax)),
+      ],
+    );
+  }
+
+  Widget _labeled(String label, FixedExtentScrollController ctrl, int count,
+      ValueChanged<int> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style:
+                AppTheme.captionText.copyWith(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 6),
+        DialPicker(controller: ctrl, count: count, min: 1, onChanged: onChanged),
       ],
     );
   }

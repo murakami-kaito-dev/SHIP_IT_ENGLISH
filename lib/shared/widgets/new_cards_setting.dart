@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +10,7 @@ import 'package:ship_it_english/core/monetization/monetization_config.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
+import 'package:ship_it_english/shared/widgets/dial_picker.dart';
 
 /// 「1日の新規学習カード数」を 1〜[maxValue] の範囲で指定する再利用ウィジェット。
 /// 設定タブ・オンボーディングの両方で使う（値は settingsProvider に永続化）。
@@ -147,8 +147,8 @@ class _NewCardsSettingState extends ConsumerState<NewCardsSetting> {
           ],
         ),
         const SizedBox(height: 16),
-        // 下部: ダイヤルピッカー（1〜effMax・1刻み・OS標準ライク）
-        _DialPicker(
+        // 下部: ダイヤルピッカー（1〜effMax・1刻み・OS標準ライク。共通 DialPicker）
+        DialPicker(
           controller: _controller,
           count: count,
           min: _min,
@@ -221,56 +221,3 @@ class _PresetButton extends StatelessWidget {
   }
 }
 
-/// iOS 標準ライクなダイヤルピッカー。中央の値が選択値。
-class _DialPicker extends StatelessWidget {
-  final FixedExtentScrollController controller;
-  final int count;
-  final int min;
-  final ValueChanged<int> onChanged;
-
-  const _DialPicker({
-    required this.controller,
-    required this.count,
-    required this.min,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 176,
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
-        border: AppTheme.cardBorder,
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: CupertinoPicker(
-        scrollController: controller,
-        itemExtent: 44,
-        diameterRatio: 1.25,
-        squeeze: 1.05,
-        useMagnifier: true,
-        magnification: 1.12,
-        // 中央のバンドを primary の淡色でハイライト（数字は透過して見える）。
-        selectionOverlay: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        onSelectedItemChanged: (index) => onChanged(index + min),
-        children: [
-          for (var v = min; v < min + count; v++)
-            Center(
-              child: Text(
-                '$v',
-                style: AppTheme.monoNumber.copyWith(color: AppTheme.textPrimary),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
