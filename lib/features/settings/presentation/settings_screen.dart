@@ -12,6 +12,7 @@ import 'package:ship_it_english/core/providers/progress_refresh.dart';
 import 'package:ship_it_english/core/services/backup_service.dart';
 import 'package:ship_it_english/core/services/notification_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
+import 'package:ship_it_english/shared/widgets/section_header.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
 import 'package:ship_it_english/features/study/data/local_card_repository.dart';
 import 'package:ship_it_english/shared/widgets/new_cards_setting.dart';
@@ -34,7 +35,7 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: AppTheme.screenPadding,
         children: [
-          _SectionHeader(strings.sectionLanguage),
+          SectionHeader(strings.sectionLanguage),
           // 学習モード（言語を切り替えると「学ぶ言語」が変わることを明示）
           Container(
             decoration: AppTheme.cardDecoration,
@@ -83,7 +84,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 20),
 
           // 学習：1日の新規カード数（1〜100。以前はホームにあった）
-          _SectionHeader(strings.sectionStudy),
+          SectionHeader(strings.sectionStudy),
           Container(
             decoration: AppTheme.cardDecoration,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -95,7 +96,7 @@ class SettingsScreen extends ConsumerWidget {
 
           // ShipIt Pro（サブスク有効時のみ表示）
           if (MonetizationConfig.subscriptionEnabled) ...[
-            _SectionHeader(strings.proSection),
+            SectionHeader(strings.proSection),
             Container(
               decoration: BoxDecoration(
                 color: AppTheme.surface,
@@ -166,7 +167,7 @@ class SettingsScreen extends ConsumerWidget {
 
           // 「1日の新規カード数」設定はホーム画面の「今日のセッション」内に移動した
           // （新規の枚数表示のすぐ近くで調整できるようにするため）
-          _SectionHeader(strings.sectionNotification),
+          SectionHeader(strings.sectionNotification),
 
           // リマインダー通知
           Container(
@@ -235,7 +236,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _SectionHeader(strings.sectionData),
+          SectionHeader(strings.sectionData),
 
           // バックアップ / 復元 / リセット
           Container(
@@ -410,22 +411,3 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-
-  const _SectionHeader(this.title);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
-        title,
-        style: AppTheme.captionText.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppTheme.textSecondary,
-        ),
-      ),
-    );
-  }
-}
