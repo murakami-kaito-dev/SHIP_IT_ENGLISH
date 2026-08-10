@@ -72,10 +72,6 @@ class _FlipCardState extends State<FlipCard>
     super.dispose();
   }
 
-  void _speak(String text) {
-    TtsService().speakTarget(text, widget.mode);
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -180,11 +176,10 @@ class _FlipCardState extends State<FlipCard>
     final isJa = widget.mode == LanguageMode.ja;
     final card = widget.card;
 
-    // 学習対象（音声読み上げの対象でもある）
-    final answerText = card.translation;
-    // 例文: jaモードは英語例文がメイン、enモードは日本語例文訳がメイン
-    final mainExample = isJa ? card.example : card.exampleTranslation;
-    final subExample = isJa ? card.exampleTranslation : card.example;
+    // 例文は言語モードによらず「英語例文 → 日本語例文」の一定順で表示する。
+    // （以前は enモードだけ順序が逆転していた＝日本語例文が先に出るバグがあった）
+    // 各行はそのロケールの同梱音声で鳴らす（英語=en-US / 日本語=ja-JP）。
+    // 学習対象言語（ja=英語 / en=日本語）の行を斜体で強調する。
     final usage = isJa
         ? card.context
         : (card.contextEn.isNotEmpty ? card.contextEn : card.context);
@@ -207,6 +202,7 @@ class _FlipCardState extends State<FlipCard>
             children: [
               _fileTag(),
               const SizedBox(height: 16),
+              // 英語フレーズ（en-US）
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -217,19 +213,25 @@ class _FlipCardState extends State<FlipCard>
                           .copyWith(fontStyle: FontStyle.italic),
                     ),
                   ),
-                  if (isJa)
-                    _SpeakerButton(onTap: () => _speak(card.phrase)),
+                  _SpeakerButton(
+                    onTap: () =>
+                        TtsService().speakLocale(card.phrase, 'en-US'),
+                  ),
                 ],
               ),
               const Divider(height: 24),
+              // 和訳（ja-JP）
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(answerText, style: AppTheme.translationText),
+                    child:
+                        Text(card.translation, style: AppTheme.translationText),
                   ),
-                  if (!isJa)
-                    _SpeakerButton(onTap: () => _speak(answerText)),
+                  _SpeakerButton(
+                    onTap: () =>
+                        TtsService().speakLocale(card.translation, 'ja-JP'),
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -240,24 +242,43 @@ class _FlipCardState extends State<FlipCard>
                 ),
               ),
               const SizedBox(height: 6),
+              // 英語例文（en-US）
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Text(
-                      isJa ? '"$mainExample"' : mainExample,
-                      style: AppTheme.bodyText
-                          .copyWith(fontStyle: FontStyle.italic),
+                      '"${card.example}"',
+                      style: AppTheme.bodyText.copyWith(
+                        fontStyle: isJa ? FontStyle.italic : FontStyle.normal,
+                      ),
                     ),
                   ),
                   _SpeakerButton(
                     onTap: () =>
-                        _speak(isJa ? card.example : card.exampleTranslation),
+                        TtsService().speakLocale(card.example, 'en-US'),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(subExample, style: AppTheme.bodyText),
+              // 日本語例文（ja-JP）
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      card.exampleTranslation,
+                      style: AppTheme.bodyText.copyWith(
+                        fontStyle: isJa ? FontStyle.normal : FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                  _SpeakerButton(
+                    onTap: () => TtsService()
+                        .speakLocale(card.exampleTranslation, 'ja-JP'),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
               Text(
                 _strings.usageLabel,
