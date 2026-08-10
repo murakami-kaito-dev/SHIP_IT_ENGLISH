@@ -138,6 +138,11 @@ class AppStrings {
   final String rangeMin;
   final String rangeMax;
   final String newCardsMaxLabel;
+  // 「1日の新規学習カード数」設定UI（見出し＋プリセット名）
+  final String newStudyCardsHeading;
+  final String presetSteadyName;
+  final String presetStandardName;
+  final String presetSpeedName;
 
   // 学習履歴カレンダー
   final String historyTitle;
@@ -276,6 +281,10 @@ class AppStrings {
     required this.rangeMin,
     required this.rangeMax,
     required this.newCardsMaxLabel,
+    required this.newStudyCardsHeading,
+    required this.presetSteadyName,
+    required this.presetStandardName,
+    required this.presetSpeedName,
     required this.historyTitle,
     required this.historyStudied,
     required this.historyNotStudied,
@@ -661,6 +670,10 @@ class AppStrings {
     rangeMin: '最小',
     rangeMax: '最大',
     newCardsMaxLabel: '最大',
+    newStudyCardsHeading: '1日の新規学習カード数',
+    presetSteadyName: 'マイペース',
+    presetStandardName: 'スタンダード',
+    presetSpeedName: 'スピード学習',
     historyTitle: '学習カレンダー',
     historyStudied: '学習した日',
     historyNotStudied: '未学習',
@@ -795,6 +808,10 @@ class AppStrings {
     rangeMin: 'Min',
     rangeMax: 'Max',
     newCardsMaxLabel: 'Max',
+    newStudyCardsHeading: 'New study cards per day',
+    presetSteadyName: 'Steady',
+    presetStandardName: 'Standard',
+    presetSpeedName: 'Speed',
     historyTitle: 'Study Calendar',
     historyStudied: 'Studied',
     historyNotStudied: 'Not studied',

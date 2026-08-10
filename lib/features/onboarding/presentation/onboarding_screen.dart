@@ -195,7 +195,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           const Text('🎯',
               style: TextStyle(fontSize: 56), textAlign: TextAlign.center),
           const SizedBox(height: 16),
-          Text(isJa ? '1日に学ぶ新規カード数' : 'New cards per day',
+          Text(isJa ? '1日の新規学習カード数' : 'New study cards per day',
               style: AppTheme.headingLarge, textAlign: TextAlign.center),
           const SizedBox(height: 8),
           Text(
@@ -209,9 +209,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           Container(
             decoration: AppTheme.cardDecoration,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: NewCardsSetting(
+            child: const NewCardsSetting(
               maxValue: AppConstants.maxNewCardsSetting,
-              label: isJa ? '1日の新規カード数' : 'New cards per day',
+              showHeading: false,
             ),
           ),
           const SizedBox(height: 32),
