@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ship_it_english/core/constants/app_constants.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
@@ -46,11 +47,23 @@ class NotificationService {
 
   Future<void> initialize() async {
     tz.initializeTimeZones();
-    // 通知は日本時間（JST）でスケジュールする。
-    // tz.initializeTimeZones() だけでは tz.local が UTC のままで、
-    // 端末が日本でも zonedSchedule が UTC 基準で組まれて9時間ずれる。
-    // 本アプリは日本時間固定でリマインドする仕様のため Asia/Tokyo を設定する。
-    tz.setLocalLocation(tz.getLocation('Asia/Tokyo'));
+    // 通知は「インストール端末のローカルタイムゾーン」でスケジュールする。
+    // tz.initializeTimeZones() だけでは tz.local が UTC のままで、端末が日本でも
+    // zonedSchedule が UTC 基準で組まれて時刻がずれる。端末の IANA タイムゾーン
+    // （例: Asia/Tokyo / America/Los_Angeles）を検出して tz.local に設定すると、
+    // どの国の端末でもその端末の時刻に同期して通知が鳴る（日本の端末→日本時間、
+    // 米国の端末→米国時間）。main.dart が起動のたびに再スケジュールするので、
+    // 端末のタイムゾーンが変わっても次回起動で正しい時刻へ組み直される。
+    try {
+      final localTz = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(localTz));
+    } catch (e) {
+      // 取得失敗はまれ。最低限のフォールバックとして日本時間を使う。
+      if (kDebugMode) {
+        print('[NotificationService] timezone detect failed: $e');
+      }
+      tz.setLocalLocation(tz.getLocation('Asia/Tokyo'));
+    }
 
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');

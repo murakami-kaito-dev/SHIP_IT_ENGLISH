@@ -34,6 +34,7 @@ dependencies:
   crypto: ^3.0.3
   # ゲーミフィケーション演出（紙吹雪）。純Dart・オフライン・軽量でネットワーク不使用。
   confetti: ^0.8.0
+  flutter_timezone: ^1.0.8
 
 dev_dependencies:
   flutter_test:

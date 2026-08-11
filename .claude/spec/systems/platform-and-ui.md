@@ -14,8 +14,8 @@
 - 全画面ルートは `AppBackground(child: Scaffold(...))` で包む（[navigation.md](../navigation.md)）。
 
 ## 通知（[notification_service.dart](../../../lib/core/services/notification_service.dart)）
-- flutter_local_notifications + timezone。**`Asia/Tokyo` 固定**（`tz.setLocalLocation`。UTCずれ防止）。
-- 毎日のリマインダー（既定08:00・設定変更可）＋ ストリーク危機通知（未学習日だけ23:00固定・メッセージ10種・設定不可）。
+- flutter_local_notifications + timezone。**端末のローカルタイムゾーンで通知する**：`initialize()` で `flutter_timezone` の `getLocalTimezone()` から端末の IANA タイムゾーン（例 `Asia/Tokyo` / `America/Los_Angeles`）を取得し `tz.setLocalLocation` に設定（`tz.initializeTimeZones()` だけだと `tz.local` が UTC のままでずれるため）。取得失敗時のフォールバックのみ `Asia/Tokyo`。`main.dart` が起動ごとに再スケジュールするので端末のTZ変更にも追従する。
+- 毎日のリマインダー（既定08:00・設定変更可）＋ ストリーク危機通知（未学習日だけ23:00固定・メッセージ10種・設定不可）。**いずれも端末ローカル時刻**（8:00 は端末の朝8時、23:00 は端末の夜11時）。
 - 起動時に許可要求（`DarwinInitializationSettings` の requestPermission）。
 
 ## ストリーク（[streak_manager.dart](../../../lib/core/services/streak_manager.dart)）

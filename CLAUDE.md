@@ -208,7 +208,7 @@ test/
 | 学習しても「習得済み 0/195」のまま | ①FutureProviderのキャッシュがセッション後に更新されない ②`mastered`は21日間隔到達が条件のため数週間反映されない | ①`invalidateProgressProviders()`をセッション完了・途中離脱・カード評価時に呼ぶ ②進捗バーと数値を`studiedCount`（status != 'new'）ベースに変更し、mastered は補助表示に |
 | 「もう一度復習する」で「復習するカードはありません」 | ①上記キャッシュ ②「曖昧」評価でも`next_review`が翌日になり当日は対象0件 | `getPracticeCards()`を追加し、`/study?mode=practice`で**その日に学習したカード**を苦手順に出題（過去日の学習分は含めない） |
 | 週間サマリーの曜日が火曜始まりだった | 直近7日のローリング表示だった | 暦の週（日曜始まり・土曜終わり）に変更 |
-| 通知が設定時刻と全く違う時間に鳴る | `tz.initializeTimeZones()` だけで `tz.local` がUTCのまま。zonedScheduleがUTC基準で組まれJST(+9h)とずれる | `initialize()` で `tz.setLocalLocation(tz.getLocation('Asia/Tokyo'))` を設定（日本時間固定でリマインド） |
+| 通知が設定時刻と全く違う時間に鳴る | `tz.initializeTimeZones()` だけで `tz.local` がUTCのまま。zonedScheduleがUTC基準で組まれJST(+9h)とずれる | `initialize()` で **`flutter_timezone` の `getLocalTimezone()` から端末の IANA タイムゾーンを取得**し `tz.setLocalLocation` に設定（端末ローカル時刻で通知＝どの国でもその端末の時刻に同期。取得失敗時のみ `Asia/Tokyo` フォールバック）。以前は `Asia/Tokyo` 固定だったが海外端末で誤時刻になるため端末TZ検出に変更 |
 | 裏面をスワイプしかけて戻すと表面に戻る | `SwipeCardWrapper` の Stack 先頭にスワイプ中だけ出るフィードバック背景があり、ドラッグ開始でカードのindexが0→1にずれてFlipCardのStateが破棄・再生成され、フリップが表面(controller=0)にリセットされる | Stack children に `ValueKey` を付与し、条件付きの子が出入りしてもFlipCardのStateを保持 |
 | 学習が設定枚数で終わらず最初に戻る | ①`StudySessionState.copyWith` の `currentCard: currentCard ?? this.currentCard` で完了時に `null` を渡しても無視され、最後のカードが残り再表示 ②完了処理の副作用が実機で失敗すると `context.go` 前で止まる | ①copyWithをセンチネル方式にして `null` 設定を可能に ②`_completeSession` を try/catchで囲み副作用が失敗しても必ず遷移、`_completing` で二重起動防止。`test/unit/study_session_test.dart` で完了ロジックを恒久ガード |
 | カード詳細で評価しても一覧の表示が変わらない | 一覧プロバイダーを再取得していなかった | `invalidateProgressProviders()` が**カード一覧系のfamilyプロバイダーも無効化**するようにした（引数なしinvalidateで全インスタンスが対象）。シートを開いたまま裏の一覧が更新される |
