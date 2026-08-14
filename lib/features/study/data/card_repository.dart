@@ -22,5 +22,10 @@ abstract class CardRepository {
   Future<int> getTotalMasteredCount();
   Future<int> getTotalCardCount();
   Future<void> saveDailyStats(DailyStats stats);
+
+  /// [todayStr]（yyyy-MM-dd）に1枚でも学習したか。
+  /// ストリーク危機通知を当日分だけ取り下げる判定に使う。
+  Future<bool> hasStudiedToday(String todayStr);
+
   Future<void> resetAllData();
 }

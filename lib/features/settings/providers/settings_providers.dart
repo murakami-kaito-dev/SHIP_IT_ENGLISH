@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ship_it_english/core/constants/app_constants.dart';
+import 'package:ship_it_english/core/providers/core_providers.dart';
 import 'package:ship_it_english/core/services/notification_service.dart';
+import 'package:ship_it_english/core/utils/date_utils.dart';
 
 /// 今日のセッションで学習する範囲。
 /// - [newOnly]    新規カードのみ
@@ -24,6 +26,10 @@ class SettingsState {
   final bool reminderEnabled;
   final int reminderHour;
   final int reminderMinute;
+
+  /// ストリーク危機通知（未学習の日だけ23:00）のオン/オフ。
+  /// 定時リマインダー [reminderEnabled] とは独立。片方だけ残す選択ができる。
+  final bool streakReminderEnabled;
   final StudyScope studyScope;
 
   const SettingsState({
@@ -31,6 +37,7 @@ class SettingsState {
     required this.reminderEnabled,
     required this.reminderHour,
     required this.reminderMinute,
+    required this.streakReminderEnabled,
     required this.studyScope,
   });
 
@@ -39,6 +46,7 @@ class SettingsState {
     bool? reminderEnabled,
     int? reminderHour,
     int? reminderMinute,
+    bool? streakReminderEnabled,
     StudyScope? studyScope,
   }) {
     return SettingsState(
@@ -46,19 +54,24 @@ class SettingsState {
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
       reminderHour: reminderHour ?? this.reminderHour,
       reminderMinute: reminderMinute ?? this.reminderMinute,
+      streakReminderEnabled:
+          streakReminderEnabled ?? this.streakReminderEnabled,
       studyScope: studyScope ?? this.studyScope,
     );
   }
 }
 
 class SettingsNotifier extends StateNotifier<SettingsState> {
-  SettingsNotifier()
+  final Ref _ref;
+
+  SettingsNotifier(this._ref)
     : super(
         const SettingsState(
           newCardsPerDay: AppConstants.defaultNewCardsPerDay,
           reminderEnabled: true,
           reminderHour: AppConstants.defaultReminderHour,
           reminderMinute: AppConstants.defaultReminderMinute,
+          streakReminderEnabled: true,
           studyScope: StudyScope.both,
         ),
       ) {
@@ -79,6 +92,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       reminderMinute:
           prefs.getInt(AppConstants.keyReminderMinute) ??
           AppConstants.defaultReminderMinute,
+      streakReminderEnabled:
+          prefs.getBool(AppConstants.keyStreakReminderEnabled) ?? true,
       studyScope:
           StudyScope.fromString(prefs.getString(AppConstants.keyStudyScope)),
     );
@@ -103,6 +118,30 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     await NotificationService().scheduleDailyReminder();
   }
 
+  /// ストリーク危機通知のオン/オフ。
+  ///
+  /// オフ時は [NotificationService.scheduleStreakReminders] が7日分をまとめて
+  /// キャンセルする。積んである予約を消さないと、切ったあとも最長7日間鳴り続ける。
+  Future<void> setStreakReminderEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(AppConstants.keyStreakReminderEnabled, value);
+    state = state.copyWith(streakReminderEnabled: value);
+
+    final service = NotificationService();
+    await service.scheduleStreakReminders();
+
+    // 再オンにすると今日の23:00分も積み直されるため、学習済みの日は
+    // その場で当日分を消す（main.dart の起動時処理と同じ扱いにする）。
+    if (value) {
+      final studiedToday = await _ref
+          .read(cardRepositoryProvider)
+          .hasStudiedToday(DateTime.now().toDateString());
+      if (studiedToday) {
+        await service.cancelStreakReminderForToday();
+      }
+    }
+  }
+
   Future<void> setReminderTime(int hour, int minute) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(AppConstants.keyReminderHour, hour);
@@ -114,5 +153,5 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 
 final settingsProvider =
     StateNotifierProvider<SettingsNotifier, SettingsState>((ref) {
-      return SettingsNotifier();
+      return SettingsNotifier(ref);
     });

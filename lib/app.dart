@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:ship_it_english/core/monetization/entitlement_provider.dart';
 import 'package:ship_it_english/core/monetization/monetization_config.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
+import 'package:ship_it_english/core/providers/notification_permission_provider.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/shared/widgets/app_background.dart';
 import 'package:ship_it_english/features/categories/presentation/categories_screen.dart';
@@ -124,10 +125,13 @@ class _ShipItEnglishAppState extends ConsumerState<ShipItEnglishApp>
   @override
   void initState() {
     super.initState();
+    // OSの通知許可は設定アプリ側で変えられるので、復帰のたびに読み直す必要が
+    // ある。課金の有無に関わらず監視するため、購読の初期化とは分けて登録する。
+    WidgetsBinding.instance.addObserver(this);
+
     // 未処理トランザクションを受け取るため起動時に購読を開始する
     // （subscriptionEnabled = false のときは内部で何もしない）
     if (MonetizationConfig.subscriptionEnabled) {
-      WidgetsBinding.instance.addObserver(this);
       ref.read(purchaseServiceProvider).init();
       _verifyEntitlement();
     }
@@ -141,8 +145,14 @@ class _ShipItEnglishAppState extends ConsumerState<ShipItEnglishApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+
+    // 設定アプリで通知をオン/オフしてから戻ってきたケースを拾う。
+    // ここを省くと「設定を開く」→許可→戻る、で警告バナーが出たままになる。
+    ref.read(notificationPermissionProvider.notifier).refresh();
+
     // App Store の設定画面で解約してから戻ってきたケースを拾う
-    if (state == AppLifecycleState.resumed) {
+    if (MonetizationConfig.subscriptionEnabled) {
       _verifyEntitlement();
     }
   }

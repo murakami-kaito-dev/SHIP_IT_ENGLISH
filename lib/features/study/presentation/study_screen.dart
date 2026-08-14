@@ -24,7 +24,6 @@ import 'package:ship_it_english/features/study/presentation/widgets/rating_butto
 import 'package:ship_it_english/features/study/presentation/widgets/swipe_card_wrapper.dart';
 import 'package:ship_it_english/features/study/providers/study_providers.dart';
 import 'package:ship_it_english/shared/widgets/app_background.dart';
-import 'package:ship_it_english/shared/widgets/progress_bar.dart';
 
 class StudyScreen extends ConsumerStatefulWidget {
   /// nullなら通常のデイリーセッション。指定するとそのカテゴリのみで学習
@@ -67,7 +66,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
   AnswerOutcome? _lastOutcome;
 
   /// エフェクト（XP+ポップ・スパークル）を作り直すためのキー。
-  /// 評価のたびに +1 して XpGainPopup / SparkleBurst を再生する。
+  /// 評価のたびに +1 して XpFlyToBar / SparkleBurst を再生する。
   int _effectTick = 0;
 
   @override
@@ -311,12 +310,56 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
             icon: const Icon(Icons.arrow_back),
             onPressed: _exitSession,
           ),
+          // 進捗の数字。単位（枚）を付け、残り枚数を添える。
+          // 「9 / 15」だけでは何の数か分からず、真上のXP（171/180）と混同する。
           title: Semantics(
             label:
                 '${state.completedUniqueCount} of ${state.totalUniqueCount} cards',
-            child: Text(
-              '${state.completedUniqueCount} / ${state.totalUniqueCount}',
-              style: AppTheme.monoNumber.copyWith(fontSize: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '${state.completedUniqueCount}',
+                        style: AppTheme.monoNumber.copyWith(fontSize: 18),
+                      ),
+                      TextSpan(
+                        text: ' / ${strings.cardsCount(state.totalUniqueCount)}',
+                        style: AppTheme.monoNumber.copyWith(
+                          fontSize: 13,
+                          color: AppTheme.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  strings.remainingCards(
+                    (state.totalUniqueCount - state.completedUniqueCount)
+                        .clamp(0, state.totalUniqueCount),
+                  ),
+                  style: AppTheme.captionText.copyWith(fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          // セッション進捗は「ページ全体の進み具合」なので、AppBar直下の全幅
+          // ヘアラインで表す。XPバー（カード状の面）と形が別物になり混同しない。
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(4),
+            child: SizedBox(
+              height: 4,
+              child: LinearProgressIndicator(
+                value: state.totalUniqueCount > 0
+                    ? state.completedUniqueCount / state.totalUniqueCount
+                    : 0,
+                minHeight: 4,
+                color: AppTheme.primary,
+                backgroundColor: AppTheme.surfaceBorder,
+              ),
             ),
           ),
         ),
@@ -326,21 +369,14 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                 children: [
                   Column(
                 children: [
-                  // XPゲージ（レベル＋経験値。FEVER中は発光）
+                  // XPゲージ（レベル＋経験値＋次の到達点。FEVER中は炎色に発光）。
+                  // セッション進捗は AppBar 直下のヘアラインへ移したので、
+                  // ここに横棒を2本並べない（同じ形が並ぶと区別できないため）。
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 6, 20, 2),
-                    child: XPProgressBar(fever: _lastOutcome?.fever ?? false),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 4,
-                    ),
-                    child: ProgressBar(
-                      value: state.totalUniqueCount > 0
-                          ? state.completedUniqueCount /
-                              state.totalUniqueCount
-                          : 0,
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
+                    child: XPProgressBar(
+                      fever: _lastOutcome?.fever ?? false,
+                      combo: _lastOutcome?.combo ?? 0,
                     ),
                   ),
                   Expanded(
@@ -382,28 +418,19 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                                   combo: _lastOutcome?.combo ?? 0),
                             ),
                           ),
-                          // XP獲得ポップ／どんまい（中央）
+                          // 「どんまい！」（中央）。XP獲得ポップはカードのStackだと
+                          // クリップされてバーまで飛べないため、外側のStackへ移した。
                           Positioned(
                             top: 96,
                             left: 0,
                             right: 0,
                             child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (_lastOutcome != null)
-                                    XpGainPopup(
-                                      key: ValueKey('xp$_effectTick'),
-                                      amount: _lastOutcome!.xpGained,
-                                      fever: _lastOutcome!.fever,
-                                    ),
-                                  if (_lastOutcome?.rating == Rating.forgot)
-                                    _KeepGoingChip(
+                              child: _lastOutcome?.rating == Rating.forgot
+                                  ? _KeepGoingChip(
                                       key: ValueKey('kg$_effectTick'),
                                       text: strings.keepGoing,
-                                    ),
-                                ],
-                              ),
+                                    )
+                                  : const SizedBox.shrink(),
                             ),
                           ),
                         ],
@@ -444,6 +471,18 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                   ),
                 ],
                   ),
+                  // 獲得XPがカード付近から立ち上がり、上のXPバーへ吸い込まれる。
+                  // カード内のStackはクリップされるため、外側のStackに置く。
+                  if (_lastOutcome != null && _lastOutcome!.xpGained > 0)
+                    Positioned.fill(
+                      child: XpFlyToBar(
+                        key: ValueKey('xpfly$_effectTick'),
+                        amount: _lastOutcome!.xpGained,
+                        fever: _lastOutcome!.fever,
+                        // 終点＝XPバーの中心（上パディング10 + カード高の約半分）
+                        endTop: 34,
+                      ),
+                    ),
                   // FEVER中は画面枠がパルス発光する
                   Positioned.fill(
                     child: FeverFrame(

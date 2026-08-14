@@ -29,15 +29,12 @@ Future<void> main() async {
   // 4. 通知スケジュール設定
   //    - 定時リマインダー（毎日同時刻）
   //    - ストリーク危機通知（7日分。学習済みの日は当日分をキャンセル）
+  //    どちらもアプリ内トグルがオフなら内部で予約を取り消す。
   final notificationService = NotificationService();
   await notificationService.initialize();
-  await notificationService.scheduleDailyReminder();
-  await notificationService.scheduleStreakReminders();
   final studiedToday = await LocalCardRepository(dbHelper)
       .hasStudiedToday(DateTime.now().toDateString());
-  if (studiedToday) {
-    await notificationService.cancelStreakReminderForToday();
-  }
+  await notificationService.rescheduleAll(studiedToday: studiedToday);
 
   // 5. 言語モード・オンボーディング状態の読み込み
   final prefs = await SharedPreferences.getInstance();

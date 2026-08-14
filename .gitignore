@@ -74,6 +74,9 @@ dart_defines.json
 # TTS 声の聴き比べ用スクラッチ
 tools/tts_poc/
 
+# ローカル専用（この端末だけで使う起動スクリプト等）
+.local/
+
 # App Store Connect API key / IDs (絶対にコミットしない)
 ios/AuthKey_*.p8
 AuthKey_*.p8

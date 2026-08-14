@@ -15,8 +15,11 @@
 
 ## 通知（[notification_service.dart](../../../lib/core/services/notification_service.dart)）
 - flutter_local_notifications + timezone。**端末のローカルタイムゾーンで通知する**：`initialize()` で `flutter_timezone` の `getLocalTimezone()` から端末の IANA タイムゾーン（例 `Asia/Tokyo` / `America/Los_Angeles`）を取得し `tz.setLocalLocation` に設定（`tz.initializeTimeZones()` だけだと `tz.local` が UTC のままでずれるため）。取得失敗時のフォールバックのみ `Asia/Tokyo`。`main.dart` が起動ごとに再スケジュールするので端末のTZ変更にも追従する。
-- 毎日のリマインダー（既定08:00・設定変更可）＋ ストリーク危機通知（未学習日だけ23:00固定・メッセージ10種・設定不可）。**いずれも端末ローカル時刻**（8:00 は端末の朝8時、23:00 は端末の夜11時）。
-- 起動時に許可要求（`DarwinInitializationSettings` の requestPermission）。
+- 毎日のリマインダー（既定08:00・時刻変更可・`reminder_enabled`）＋ ストリーク危機通知（未学習日だけ23:00固定・時刻不可・メッセージ10種・`streak_reminder_enabled`）。**2つは独立にオン/オフできる**（[screens/settings.md](../screens/settings.md)）。**いずれも端末ローカル時刻**（8:00 は端末の朝8時、23:00 は端末の夜11時）。
+- **オフにしたら必ず予約を取り消す**。`scheduleStreakReminders()` はフラグが false なら `cancelAllStreakReminders()` して return する。7日分を先に積む設計なので、消さないと切ったあとも最長7日鳴り続ける。
+- `rescheduleAll({required studiedToday})` が「定時＋危機の再スケジュール ＋ 学習済みなら当日分キャンセル」をまとめる。起動時（`main.dart`）とOS許可の復帰時（`notificationPermissionProvider`）の両方がこれを呼ぶ。
+- **OSの通知許可**：`isSystemNotificationEnabled()`（iOS `checkPermissions()` / Android `areNotificationsEnabled()`）。判定不能時は true（誤って警告を出さない）。状態は `notificationPermissionProvider` が保持し、`app.dart` の `resumed` で毎回更新する（許可はアプリ外で変えられるため）。拒否→許可に変わったら `rescheduleAll()` を呼ぶ（許可が無い間の `zonedSchedule` は例外を投げず黙って捨てられるため、組み直さないと復活しない）。
+- 起動時に許可要求（`DarwinInitializationSettings` の requestPermission）。要求したことを `notif_permission_requested` に記録し、設定画面が「未決定」と「拒否済み」を区別できるようにする。**許可要求をオンボーディング後へ移す場合、この記録も一緒に移すこと。**
 
 ## ストリーク（[streak_manager.dart](../../../lib/core/services/streak_manager.dart)）
 - `streak_count` / `last_study_date`。学習完了で `recordStudyCompletion`（1日空きは継続、2日以上でリセット）。

@@ -510,6 +510,7 @@ class LocalCardRepository implements CardRepository {
   }
 
   /// 本日の学習済みカードが存在するか
+  @override
   Future<bool> hasStudiedToday(String todayStr) async {
     final db = await _db.database;
     final result = await db.query(

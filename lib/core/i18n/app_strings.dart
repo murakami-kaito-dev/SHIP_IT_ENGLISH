@@ -96,7 +96,18 @@ class AppStrings {
   final String newCardsPerDay;
   final String dailyReminder;
   final String reminderTime;
+  final String streakReminder;
+  final String streakReminderDesc;
+  // 時刻ピッカー（ホイール式）
+  final String hourLabel;
+  final String minuteLabel;
+  final String pickerConfirm;
   final String notifPermissionRequired;
+  // OSの通知許可がオフのときに通知セクションの先頭へ出すバナー
+  final String notifSystemOffTitle;
+  final String notifSystemOffBody;
+  final String notifOpenSettings;
+  final String notifOpenSettingsFailed;
   final String backupExport;
   final String backupExportDesc;
   final String backupImport;
@@ -245,7 +256,16 @@ class AppStrings {
     required this.newCardsPerDay,
     required this.dailyReminder,
     required this.reminderTime,
+    required this.streakReminder,
+    required this.streakReminderDesc,
+    required this.hourLabel,
+    required this.minuteLabel,
+    required this.pickerConfirm,
     required this.notifPermissionRequired,
+    required this.notifSystemOffTitle,
+    required this.notifSystemOffBody,
+    required this.notifOpenSettings,
+    required this.notifOpenSettingsFailed,
     required this.backupExport,
     required this.backupExportDesc,
     required this.backupImport,
@@ -391,6 +411,19 @@ class AppStrings {
   String xpToNext(int remaining, int nextLevel) => mode == LanguageMode.ja
       ? 'あと $remaining XP で LV $nextLevel'
       : '$remaining XP to LV $nextLevel';
+
+  /// レベルアップ間近（85%以上）のときの煽り文言。短く強くする。
+  String xpAlmost(int remaining) => mode == LanguageMode.ja
+      ? 'あと $remaining XP!'
+      : '$remaining XP to go!';
+
+  /// セッションの残り枚数。数字だけの `9 / 15` を補い、ゴールを意識させる。
+  String remainingCards(int n) =>
+      mode == LanguageMode.ja ? 'のこり $n枚' : '$n left';
+
+  /// コンボ数のチップ表示。
+  String comboChip(int combo) =>
+      mode == LanguageMode.ja ? 'コンボ $combo' : 'Combo $combo';
 
   /// レベルの意味を説明するキャプション（学習量の証）。
   String get levelCaption => mode == LanguageMode.ja
@@ -634,7 +667,16 @@ class AppStrings {
     newCardsPerDay: '1日の新規カード数',
     dailyReminder: '毎日のリマインダー',
     reminderTime: '通知時刻',
+    streakReminder: 'ストリークが途切れそうな日',
+    streakReminderDesc: '学習していない日だけ、23:00にお知らせします',
+    hourLabel: '時',
+    minuteLabel: '分',
+    pickerConfirm: '決定',
     notifPermissionRequired: '通知の許可が必要です。設定アプリで許可してください。',
+    notifSystemOffTitle: 'iOSの設定で通知がオフになっています',
+    notifSystemOffBody: '現在このアプリからの通知は届きません',
+    notifOpenSettings: '設定を開く',
+    notifOpenSettingsFailed: '設定アプリを開けませんでした',
     backupExport: 'バックアップを書き出す',
     backupExportDesc: '学習履歴をファイルに保存します（機種変更前に推奨）',
     backupImport: 'バックアップから復元',
@@ -769,8 +811,17 @@ class AppStrings {
     newCardsPerDay: 'New cards per day',
     dailyReminder: 'Daily reminder',
     reminderTime: 'Reminder time',
+    streakReminder: 'When your streak is at risk',
+    streakReminderDesc: 'Only on days you haven\'t studied, at 23:00',
+    hourLabel: 'Hour',
+    minuteLabel: 'Min',
+    pickerConfirm: 'Done',
     notifPermissionRequired:
         'Notification permission is required. Please allow it in the Settings app.',
+    notifSystemOffTitle: 'Notifications are turned off in iOS Settings',
+    notifSystemOffBody: 'This app cannot deliver any notifications right now',
+    notifOpenSettings: 'Open Settings',
+    notifOpenSettingsFailed: 'Could not open the Settings app',
     backupExport: 'Export backup',
     backupExportDesc: 'Save your learning history to a file',
     backupImport: 'Restore from backup',

@@ -20,6 +20,7 @@ Claude Code がこのプロジェクトを触る際に必ず参照するコン�
 | ドキュメント | 用途 |
 |-------------|------|
 | `.claude/spec/` | **画面別・システム別の仕様（コードを読む前にここ）** |
+| `.claude/docs/release-log.md` | **リリース履歴（正）。バージョン/ビルド番号を上げたら必ずその場で追記する**（「ビルドしただけ」と「配信した」は git から判別できない） |
 | `docs/app_store_connect_submission.md` | App Store Connect 申請の全手順・全入力値 |
 | `docs/subscription_setup_guide.md` | サブスク（ShipIt Pro）の有効化手順・App Store Connect操作・Sandboxテスト |
 | `docs/backup_and_restore.md` | 学習データのバックアップ/復元の仕様と操作手順 |
@@ -176,7 +177,9 @@ test/
 - [x] サブスクリプション「ShipIt Pro」一式（**休眠状態**。`MonetizationConfig.subscriptionEnabled = false`。有効化は `docs/subscription_setup_guide.md` 参照）
   - 課金・パウォール・ゲートに加え、**失効判定**（解約/返金を起動・復帰時に検出してPro解除）・**管理/解約導線**・**設定からの復元**まで実装済み
 - [x] 学習データのバックアップ/復元（JSON書き出し・読み込み。`docs/backup_and_restore.md`）
-- [x] ストリーク危機通知（未学習の日だけ23:00固定・設定不可・メッセージ10種ランダム）
+- [x] ストリーク危機通知（未学習の日だけ23:00固定・時刻は設定不可・メッセージ10種ランダム）
+- [x] 通知設定の分離とOS許可ゲート（設定画面の通知トグルを「毎日のリマインダー」「ストリークが途切れそうな日」の2本に分離。OS通知オフ時は警告バナー＋「設定を開く」導線を出しトグルを非活性化）
+- [x] 時刻選択をホイール式に変更（`showWheelTimePicker`。時・分の2連ホイール。Materialのアナログ文字盤を廃止）＋「通知時刻」をリマインダートグルの子として開閉表示（オフで畳む）
 - [x] 週間学習サマリー（ホームに直近7日の棒グラフ）
 - [x] 学習履歴カレンダー（ホームのストリークバッジ🔥をタップ→`/history`。月送り・学習日をマーク・今月/累計の学習日数）
 - [x] カード検索（`/search`。フレーズ・和訳・例文の部分一致）
@@ -209,6 +212,8 @@ test/
 | 「もう一度復習する」で「復習するカードはありません」 | ①上記キャッシュ ②「曖昧」評価でも`next_review`が翌日になり当日は対象0件 | `getPracticeCards()`を追加し、`/study?mode=practice`で**その日に学習したカード**を苦手順に出題（過去日の学習分は含めない） |
 | 週間サマリーの曜日が火曜始まりだった | 直近7日のローリング表示だった | 暦の週（日曜始まり・土曜終わり）に変更 |
 | 通知が設定時刻と全く違う時間に鳴る | `tz.initializeTimeZones()` だけで `tz.local` がUTCのまま。zonedScheduleがUTC基準で組まれJST(+9h)とずれる | `initialize()` で **`flutter_timezone` の `getLocalTimezone()` から端末の IANA タイムゾーンを取得**し `tz.setLocalLocation` に設定（端末ローカル時刻で通知＝どの国でもその端末の時刻に同期。取得失敗時のみ `Asia/Tokyo` フォールバック）。以前は `Asia/Tokyo` 固定だったが海外端末で誤時刻になるため端末TZ検出に変更 |
+| XPゲージがどれだけXPを得ても空のまま | `_Bar` の `FractionallySizedBox` に `widthFactor` しか指定しておらず、高さ制約が緩いまま子を持たない `DecoratedBox` に渡り、塗りが**高さ0**に潰れていた（幅は正しく計算されていた） | `heightFactor: 1.0` を追加。`test/unit/xp_progress_bar_test.dart` で「塗りの高さ > 0」を恒久ガード |
+| 学習画面の上下2本のバーが何を表すか分からない | 同形の横棒が6px間隔で並び、下のバーは AppBar の `9 / 15` と情報が完全重複。単位・ラベルも無し | セッション進捗を **AppBar直下の全幅4pxヘアライン**に変更（線）、XPは**カード上の部品**に変更（面）。数字に単位（枚 / XP）と「のこり◯枚」「あと◯XPでLV◯」を追加 |
 | 裏面をスワイプしかけて戻すと表面に戻る | `SwipeCardWrapper` の Stack 先頭にスワイプ中だけ出るフィードバック背景があり、ドラッグ開始でカードのindexが0→1にずれてFlipCardのStateが破棄・再生成され、フリップが表面(controller=0)にリセットされる | Stack children に `ValueKey` を付与し、条件付きの子が出入りしてもFlipCardのStateを保持 |
 | 学習が設定枚数で終わらず最初に戻る | ①`StudySessionState.copyWith` の `currentCard: currentCard ?? this.currentCard` で完了時に `null` を渡しても無視され、最後のカードが残り再表示 ②完了処理の副作用が実機で失敗すると `context.go` 前で止まる | ①copyWithをセンチネル方式にして `null` 設定を可能に ②`_completeSession` を try/catchで囲み副作用が失敗しても必ず遷移、`_completing` で二重起動防止。`test/unit/study_session_test.dart` で完了ロジックを恒久ガード |
 | カード詳細で評価しても一覧の表示が変わらない | 一覧プロバイダーを再取得していなかった | `invalidateProgressProviders()` が**カード一覧系のfamilyプロバイダーも無効化**するようにした（引数なしinvalidateで全インスタンスが対象）。シートを開いたまま裏の一覧が更新される |
@@ -225,6 +230,10 @@ test/
 - **`AppBar.actions` に幅が不定のWidgetを置かない**（LinearProgressIndicator など）
 - **カードのseed投入**: `seed_data.dart` が `seed_version` と JSON の `version` を比較して差分のみ投入する。バージョンを上げないと再投入されない。**JSONから削除したカードはDBからも自動削除される**（cards.jsonが唯一の正）
 - **`AppConstants.appVersion` は `pubspec.yaml` の version と手動同期**（設定画面フッターに表示）
+- **通知はトグルの表示と実挙動を必ず一致させる**。①アプリ内トグルをオフにしたら、既にOSへ積んだ予約も消す（`scheduleStreakReminders()` は7日分を先に積むため、止めるだけでは最長7日鳴り続ける）②OSの通知許可がオフのときはトグルを「オン」と表示しない（`notificationPermissionProvider` で非活性化＋バナー）。**通知欄ごと隠さない**（「通知機能が無い」と誤解されるため）③許可はアプリ外で変わるので `resumed` のたびに読み直し、復帰時は `rescheduleAll()` で予約を組み直す（許可が無い間の `zonedSchedule` は黙って捨てられる）
+- **`FractionallySizedBox` で `widthFactor` だけを指定しない**。高さの制約が緩いまま渡り、子を持たない `DecoratedBox` / `Container` は**高さ0に潰れて1pxも描画されない**。必ず `heightFactor: 1.0` も付ける。XPゲージがどれだけ溜まっても空のままだった実績あり（`test/unit/xp_progress_bar_test.dart` で恒久ガード）
+- **学習画面に同じ形の横棒を2本並べない**。セッション進捗＝AppBar直下の全幅ヘアライン（線）、XP＝カード上の部品（面）と形を分ける。進捗の数字には必ず単位（枚 / XP）を付ける
+- **時刻の選択に `showTimePicker`（Materialのアナログ文字盤）を使わない** → 24時間制だと内周・外周に数字が二重に並び読み取りにくい。`shared/widgets/wheel_time_picker.dart` の `showWheelTimePicker` を使う。「時」「分」は数字に付けず列見出しに置く（英語モードで "08Hour" になるため）
 - **実行時のネットワーク通信を伴う機能の追加は要確認**（App Storeの「データ収集なし」申告が崩れるため）
 - **UI文言はハードコード禁止**: `core/i18n/app_strings.dart` に ja/en 両方を定義し、`stringsProvider` 経由で取得する
 - **Pro判定は `isProProvider` 経由のみ**（サブスク無効時は常にtrue）。無料/Proの線引きは `MonetizationConfig` だけで変更する

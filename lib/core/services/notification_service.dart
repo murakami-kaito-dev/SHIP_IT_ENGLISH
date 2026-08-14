@@ -79,6 +79,13 @@ class NotificationService {
     );
 
     await _plugin.initialize(initSettings);
+
+    // DarwinInitializationSettings の requestAlertPermission などにより、
+    // iOS では初回起動のこの時点でOSの許可ダイアログが出る。設定画面が
+    // 「未決定」と「拒否済み」を取り違えないよう、要求済みとして記録する。
+    // ※許可要求をオンボーディング後に移す場合は、この行も一緒に移すこと。
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(AppConstants.keyNotifPermissionRequested, true);
   }
 
   Future<LanguageMode> _languageMode() async {
@@ -166,7 +173,8 @@ class NotificationService {
   // ===========================================================
   // 2) ストリーク危機通知（その日未学習のときだけ 23:00 に鳴る）
   //
-  // ユーザー設定はなし（時刻固定・常時有効）。
+  // 時刻は23:00固定（設定不可）だが、オン/オフは
+  // keyStreakReminderEnabled で定時リマインダーとは独立に切り替えられる。
   // 仕組み: 今後7日分を曜日別ID（2001〜2007）でランダムメッセージ
   // 付きでスケジュールする。学習が完了した日は当日分だけキャンセル
   // する（cancelStreakReminderForToday）。翌日以降の分は残るので、
@@ -175,6 +183,17 @@ class NotificationService {
   // ===========================================================
 
   Future<void> scheduleStreakReminders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled =
+        prefs.getBool(AppConstants.keyStreakReminderEnabled) ?? true;
+
+    // オフなら積んである7日分を必ず消す。スケジュールを止めるだけでは、
+    // オフにする前に OS へ登録済みの通知が最長7日間鳴り続けてしまう。
+    if (!enabled) {
+      await cancelAllStreakReminders();
+      return;
+    }
+
     const hour = AppConstants.streakReminderHour;
     const minute = AppConstants.streakReminderMinute;
 
@@ -241,7 +260,73 @@ class NotificationService {
     }
   }
 
+  /// 全ての通知予約を組み直す（起動時／OSの通知許可が戻ったとき）。
+  ///
+  /// 許可が無い間の `zonedSchedule` は例外を投げず黙って無視されるだけなので、
+  /// 許可が戻った時点で必ずここを通さないと1通も鳴らないままになる。
+  /// [studiedToday] が true なら当日分のストリーク危機通知は落とす。
+  Future<void> rescheduleAll({required bool studiedToday}) async {
+    await scheduleDailyReminder();
+    await scheduleStreakReminders();
+    if (studiedToday) {
+      await cancelStreakReminderForToday();
+    }
+  }
+
+  // ===========================================================
+  // 3) OSの通知許可
+  //
+  // アプリ内のトグルがオンでも、OS側で通知が切られていれば1通も届かない。
+  // 設定画面はこの状態を検出して「オンなのに鳴らない」表示にならないようにする。
+  // ===========================================================
+
+  /// OSレベルで通知が有効かどうか。
+  ///
+  /// iOS の許可はアプリの外（設定アプリ）で変えられるので、起動時に一度だけ
+  /// ではなくフォアグラウンド復帰のたびに問い合わせ直すこと。
+  /// 判定できないプラットフォームでは true（＝制限なし）を返す。
+  Future<bool> isSystemNotificationEnabled() async {
+    try {
+      final ios = _plugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
+      if (ios != null) {
+        final options = await ios.checkPermissions();
+        // options が null なのは情報を取得できなかったときだけ。
+        // ここで false を返すと誤ってバナーを出してしまうので true 扱いにする。
+        return options?.isEnabled ?? true;
+      }
+
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android != null) {
+        return await android.areNotificationsEnabled() ?? true;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[NotificationService] checkPermissions failed: $e');
+      }
+    }
+    return true;
+  }
+
+  /// これまでに一度でもOSの許可ダイアログを出したか。
+  ///
+  /// iOS は一度拒否されると `requestPermissions()` がダイアログを出さずに
+  /// 即 false を返す。未決定（＝ダイアログを出せばよい）と拒否済み（＝設定
+  /// アプリへ誘導するしかない）を区別するために記録しておく。
+  Future<bool> hasRequestedPermission() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(AppConstants.keyNotifPermissionRequested) ?? false;
+  }
+
   Future<bool> requestPermission() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(AppConstants.keyNotifPermissionRequested, true);
+
     final ios = _plugin
         .resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin
@@ -253,6 +338,14 @@ class NotificationService {
         sound: true,
       );
       return granted ?? false;
+    }
+
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (android != null) {
+      return await android.requestNotificationsPermission() ?? false;
     }
     return true;
   }

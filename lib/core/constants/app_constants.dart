@@ -50,6 +50,14 @@ class AppConstants {
   static const String keyReminderEnabled = 'reminder_enabled';
   static const String keyReminderHour = 'reminder_hour';
   static const String keyReminderMinute = 'reminder_minute';
+  // ストリーク危機通知（23:00固定）のオン/オフ。既定はオン。
+  // 定時リマインダーとは独立させる。「毎朝の通知は不要だが、途切れそうな日だけは
+  // 知らせてほしい」という組み合わせを選べるようにするため。
+  static const String keyStreakReminderEnabled = 'streak_reminder_enabled';
+  // OSの通知許可を一度でも要求したか。iOSは一度拒否されると requestPermissions()
+  // がダイアログを出さず即 false を返すため、「未決定（ダイアログを出す）」と
+  // 「拒否済み（設定アプリへ誘導する）」をこのフラグで区別する。
+  static const String keyNotifPermissionRequested = 'notif_permission_requested';
   static const String keyLanguageMode = 'language_mode';
   static const String keyOnboardingDone = 'onboarding_done';
   static const String keyReviewRequested = 'review_requested';

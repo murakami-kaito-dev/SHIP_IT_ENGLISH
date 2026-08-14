@@ -13,7 +13,10 @@
 
 ## 画面構成
 - AppBar：戻る（`_exitSession`）＋「完了数 / 総数」。
-- 上部：**XPProgressBar**（レベル＋XP・FEVER中は発光）＋ セッション進捗バー。
+- 上部：**2つの進捗表示は形を変えて区別する**（同じ形の横棒を並べると何のバーか分からなくなる）。
+  - **セッション進捗** ＝ AppBar の数字（`9 / 15枚` ＋ `のこり 6枚`）と、**AppBar直下の全幅4pxヘアライン**（`AppBar.bottom` の `PreferredSize`）。「ページ全体の進み具合」を表す線。単位「枚」を必ず付ける。
+  - **XP/レベル** ＝ `XPProgressBar`。白いカードの面の上に LVバッジ・ゲージ・次の到達点をまとめた部品。
+  - 以前は同形の横棒が6px間隔で2本並び、下のバーは AppBar の数字と情報が完全重複していた。**横棒を2本並べないこと。**
 - 中央：`SwipeCardWrapper`（左=忘れた/右=覚えてた・閾値30%）で包んだ `FlipCard`（Y軸3Dフリップ300ms・表=英語→裏=訳/例文/使用場面・スピーカーで読み上げ）。
   - オーバーレイ（IgnorePointer）：`ComboOverlay`（COMBO×N）、`SparkleBurst`（正解時）、`XpGainPopup`（+XP）、不正解時 `_KeepGoingChip`（どんまい！）。
   - 画面枠：`FeverFrame`（FEVER中パルス発光）。

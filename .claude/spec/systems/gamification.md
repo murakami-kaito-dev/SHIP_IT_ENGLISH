@@ -31,7 +31,8 @@
 | `FeverFrame` | FEVER中の画面枠パルス発光 |
 | `XpGainPopup` | 「+N XP」が浮上して消える |
 | `SparkleBurst` | 正解時の粒子（軽量CustomPainter・外部パッケージ不使用） |
-| `XPProgressBar` | レベルバッジ＋XPゲージ（easeOutQuartで滑らか・countはmono） |
+| `XPProgressBar` | 白カード上に LVバッジ＋XPゲージ＋**次の到達点**（`xpToNext`／85%超で `xpAlmost` の煽り文言）。25%ごとの刻み目で1回分(+12XP程度)の増加も体感できる。FEVER/コンボはチップで併記。easeOutQuartで滑らか・countはmono・単位「XP」必須 |
+| `XpFlyToBar` | 獲得XPがカード付近から立ち上がり、**上のXPバーへ吸い込まれる**。answer→XP→ゲージ増加の因果を見せる。カード内のStackはクリップされるので**外側のStackに置く**こと |
 | `ConfettiCelebration` | 紙吹雪（confettiパッケージ・下向き噴出） |
 | `showLevelUpModal` | 「LEVEL UP!」を Scale-up+Bounce＋紙吹雪＋音/振動 |
 | `StreakWidget` | 🔥 breathingパルス・目標達成で強発光＋チェック（home小/完了画面large） |
