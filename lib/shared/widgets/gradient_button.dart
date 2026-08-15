@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 
-/// 主要CTA用のグラデーションボタン（インディゴのグローで奥行きを出す）。
-/// [onPressed] が null のときは淡色で無効表示にする。
-/// 押下中は `scale(0.95)` に縮み、離すと Spring(elasticOut) で弾んで戻る
-/// （SKILL animation-effects「タップ＆レスポンス」）。
+/// 主要CTA用の「下エッジで押すと沈む」立体ボタン（デザイン案H＝骨格:案F）。
+///
+/// 通常時は下に濃色の厚み（5px）があり、押すとボタン本体が沈んで厚みが薄くなる
+/// （物理的に「押した」感触）。離すと素早く戻る。[onPressed] が null のときは
+/// 淡色で無効表示にする。名前は歴史的経緯で GradientButton のまま
+/// （呼び出し側60箇所超のAPI互換を維持）。
 class GradientButton extends StatefulWidget {
   final String label;
   final IconData? icon;
@@ -24,11 +26,14 @@ class GradientButton extends StatefulWidget {
 
 class _GradientButtonState extends State<GradientButton>
     with SingleTickerProviderStateMixin {
-  // value 0 = 通常, 1 = 押下（0.95）。離すと elasticOut で戻す。
+  /// 下エッジの厚み（沈み込みの深さでもある）。
+  static const double _edge = 5.0;
+
+  // value 0 = 通常（浮いている）, 1 = 押下（沈んでいる）。
   late final AnimationController _press = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 90),
-    reverseDuration: const Duration(milliseconds: 340),
+    duration: const Duration(milliseconds: 70),
+    reverseDuration: const Duration(milliseconds: 160),
   );
 
   @override
@@ -45,24 +50,33 @@ class _GradientButtonState extends State<GradientButton>
     return AnimatedBuilder(
       animation: _press,
       builder: (context, child) {
-        final t = _press.status == AnimationStatus.reverse ||
-                _press.status == AnimationStatus.dismissed
-            ? Curves.elasticOut.transform(_press.value)
-            : _press.value;
-        return Transform.scale(scale: 1.0 - 0.05 * t, child: child);
+        final t = Curves.easeOut.transform(_press.value);
+        final dy = _edge * 0.8 * t; // 沈む量
+        return Padding(
+          // 沈んでも下端の占有高さが変わらないよう、浮き分を上に確保する
+          padding: EdgeInsets.only(top: dy, bottom: _edge - dy),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              color: enabled ? AppTheme.primary : AppTheme.primaryLight,
+              boxShadow: enabled
+                  ? [
+                      BoxShadow(
+                        color: AppTheme.primaryDark,
+                        offset: Offset(0, _edge - dy),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: child,
+          ),
+        );
       },
-      child: DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: radius,
-        gradient: enabled ? AppTheme.primaryGradient : null,
-        color: enabled ? null : AppTheme.primaryLight,
-        boxShadow: enabled ? AppTheme.buttonShadow : null,
-      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: radius,
-          onHighlightChanged: enabled
+          onHighlightChanged: widget.onPressed != null
               ? (down) => down ? _press.forward() : _press.reverse()
               : null,
           onTap: enabled
@@ -72,7 +86,7 @@ class _GradientButtonState extends State<GradientButton>
                 }
               : null,
           child: SizedBox(
-            height: AppTheme.buttonHeight,
+            height: AppTheme.buttonHeight - _edge,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -94,7 +108,6 @@ class _GradientButtonState extends State<GradientButton>
             ),
           ),
         ),
-      ),
       ),
     );
   }
