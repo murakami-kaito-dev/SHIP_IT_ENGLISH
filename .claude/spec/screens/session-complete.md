@@ -23,3 +23,4 @@
 
 ## 注意
 - レベルアップの祝い（`showLevelUpModal`）は Study 画面側で発火済み（ここでは重ねない）。
+- **パーフェクトセッション**：`SessionResult.perfect`（全カード1発で「覚えてた」・`perfectMinCards=5`枚以上・ユニットテスト除外＝`isPerfectSession` 純関数）のとき、タイトル下に金色の「⭐ PERFECT!」バナー＋ボーナス `perfectBonusXp=25` XP（study_screen `_completeSession` で `grantBonusXp(addToSession:true)`＝獲得XPに合算。通算回数は `keyPerfectSessions` に保存しバッジ判定に使う）。

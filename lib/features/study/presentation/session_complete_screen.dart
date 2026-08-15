@@ -133,6 +133,49 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
                 const SizedBox(height: 16),
                 Text(strings.sessionCompleteTitle,
                     style: AppTheme.headingLarge),
+                if (result.perfect) ...[
+                  const SizedBox(height: 10),
+                  // パーフェクトセッション（全問1発「覚えてた」）の証
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [
+                        Color(0xFFFFB300),
+                        Color(0xFFFFD54F),
+                      ]),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFB300).withOpacity(0.45),
+                          blurRadius: 14,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          '\u2b50 ${strings.perfectTitle}',
+                          style: const TextStyle(
+                            fontFamily: AppTheme.monoFont,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          strings.perfectCaption(
+                              GamificationConfig.perfectBonusXp),
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 // デイリーストリーク（大・達成で炎が強発光＋チェック）
                 StreakWidget(

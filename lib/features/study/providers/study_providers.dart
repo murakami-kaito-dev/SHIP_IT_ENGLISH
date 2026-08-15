@@ -6,6 +6,7 @@ import 'package:ship_it_english/core/providers/core_providers.dart';
 import 'package:ship_it_english/core/services/notification_service.dart';
 import 'package:ship_it_english/core/services/streak_manager.dart';
 import 'package:ship_it_english/core/utils/date_utils.dart';
+import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
 import 'package:ship_it_english/features/study/data/card_repository.dart';
 import 'package:ship_it_english/features/study/data/local_card_repository.dart';
@@ -24,6 +25,10 @@ class SessionResult {
   final Duration duration;
   final int streakCount;
 
+  /// 全カードを1回で「覚えてた」で終えた（パーフェクトセッション）。
+  /// 完了画面でPERFECT演出＋ボーナスXPの対象になる。
+  final bool perfect;
+
   const SessionResult({
     required this.studiedCount,
     required this.correctCount,
@@ -31,6 +36,7 @@ class SessionResult {
     required this.reviewCardsCount,
     required this.duration,
     required this.streakCount,
+    this.perfect = false,
   });
 }
 
@@ -411,6 +417,12 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
       reviewCardsCount: reviewCount,
       duration: session.duration,
       streakCount: streakCount,
+      perfect: isPerfectSession(
+        results: results,
+        uniqueCount: latestRatings.length,
+        unitTest: state.unitTest,
+        minCards: GamificationConfig.perfectMinCards,
+      ),
     );
   }
 }

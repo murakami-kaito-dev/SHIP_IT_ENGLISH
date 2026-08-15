@@ -94,12 +94,17 @@ class GamificationNotifier extends StateNotifier<GamificationState> {
     return true;
   }
 
-  /// ボーナスXPを直接付与する（デイリークエストの宝箱など）。
-  /// 通常の評価XPと同じく通算XPに積み、レベルアップも起こり得る。
-  Future<void> grantBonusXp(int xp) async {
+  /// ボーナスXPを直接付与する（デイリークエストの宝箱・ユニットクリア・
+  /// パーフェクトセッションなど）。通常の評価XPと同じく通算XPに積み、
+  /// レベルアップも起こり得る。[addToSession] を true にすると完了画面の
+  /// 「獲得XP」（sessionXp）にも合算される（パーフェクトボーナス用）。
+  Future<void> grantBonusXp(int xp, {bool addToSession = false}) async {
     if (xp <= 0) return;
     final newTotal = state.snapshot.totalXp + xp;
-    state = state.copyWith(snapshot: GamificationSnapshot.fromTotalXp(newTotal));
+    state = state.copyWith(
+      snapshot: GamificationSnapshot.fromTotalXp(newTotal),
+      sessionXp: addToSession ? state.sessionXp + xp : state.sessionXp,
+    );
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(AppConstants.keyTotalXp, newTotal);
   }

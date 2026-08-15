@@ -126,4 +126,57 @@ void main() {
       expect(guard, 3);
     });
   });
+
+  group('isPerfectSession（パーフェクト判定）', () {
+    CardResult r(String id, Rating rating, {bool retry = false}) => CardResult(
+        cardId: id, rating: rating, answeredAt: DateTime(2026), isRetry: retry);
+
+    test('全カード1発で「覚えてた」ならパーフェクト', () {
+      final results = [for (var i = 0; i < 5; i++) r('c$i', Rating.remembered)];
+      expect(
+          isPerfectSession(
+              results: results, uniqueCount: 5, unitTest: false, minCards: 5),
+          true);
+    });
+
+    test('「曖昧」が1枚でもあれば不成立', () {
+      final results = [
+        for (var i = 0; i < 4; i++) r('c$i', Rating.remembered),
+        r('c4', Rating.uncertain),
+      ];
+      expect(
+          isPerfectSession(
+              results: results, uniqueCount: 5, unitTest: false, minCards: 5),
+          false);
+    });
+
+    test('「忘れた」（再出題込み）は不成立', () {
+      final results = [
+        r('c0', Rating.forgot),
+        for (var i = 1; i < 5; i++) r('c$i', Rating.remembered),
+        r('c0', Rating.remembered, retry: true),
+      ];
+      expect(
+          isPerfectSession(
+              results: results, uniqueCount: 5, unitTest: false, minCards: 5),
+          false);
+    });
+
+    test('最低枚数未満・ユニットテスト・空は対象外', () {
+      final four = [for (var i = 0; i < 4; i++) r('c$i', Rating.remembered)];
+      expect(
+          isPerfectSession(
+              results: four, uniqueCount: 4, unitTest: false, minCards: 5),
+          false);
+      final five = [for (var i = 0; i < 5; i++) r('c$i', Rating.remembered)];
+      expect(
+          isPerfectSession(
+              results: five, uniqueCount: 5, unitTest: true, minCards: 5),
+          false);
+      expect(
+          isPerfectSession(
+              results: const [], uniqueCount: 0, unitTest: false, minCards: 5),
+          false);
+    });
+  });
 }

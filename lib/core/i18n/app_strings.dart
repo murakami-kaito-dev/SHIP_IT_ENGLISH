@@ -446,6 +446,13 @@ class AppStrings {
     };
   }
 
+  // --- パーフェクトセッション ---
+  String get perfectTitle => 'PERFECT!';
+
+  String perfectCaption(int xp) => mode == LanguageMode.ja
+      ? '全問1発で「覚えてた」！ ボーナス +$xp XP'
+      : 'Every card right on the first try! Bonus +$xp XP';
+
   // --- ラバーダック・マスコット「ダッキー」 ---
   String get duckName => mode == LanguageMode.ja ? 'ダッキー' : 'Ducky';
 

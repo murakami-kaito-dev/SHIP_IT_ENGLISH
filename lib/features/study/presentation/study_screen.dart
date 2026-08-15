@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +17,7 @@ import 'package:ship_it_english/features/gamification/presentation/widgets/level
 import 'package:ship_it_english/features/gamification/presentation/widgets/sparkle_burst.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_gain_popup.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
+import 'package:ship_it_english/core/constants/app_constants.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
 import 'package:ship_it_english/features/gamification/providers/quests_providers.dart';
@@ -240,6 +242,22 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
       return;
     }
 
+    // パーフェクトセッション（全カード1発で「覚えてた」）ならボーナスXP。
+    // sessionXp にも合算し、完了画面の「獲得XP」に含めて見せる。
+    if (result?.perfect ?? false) {
+      await ref.read(gamificationProvider.notifier).grantBonusXp(
+            GamificationConfig.perfectBonusXp,
+            addToSession: true,
+          );
+      // 通算パーフェクト回数（マイルストーンバッジの判定に使う）
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(
+        AppConstants.keyPerfectSessions,
+        (prefs.getInt(AppConstants.keyPerfectSessions) ?? 0) + 1,
+      );
+    }
+
+    if (!mounted) return;
     ref.read(lastSessionResultProvider.notifier).state = result;
     context.go('/session-complete');
   }

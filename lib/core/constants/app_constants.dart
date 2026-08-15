@@ -74,6 +74,10 @@ class AppConstants {
   static const String keyQuestProgress = 'daily_quest_progress';
   // クリア済みユニット（'categoryId:unitIndex' の文字列リスト）。
   static const String keyClearedUnits = 'cleared_units';
+  // パーフェクトセッション（全カード1発で「覚えてた」）の通算回数。
+  static const String keyPerfectSessions = 'perfect_sessions_count';
+  // 獲得済みバッジ（JSON: id → 獲得日ISO8601）。
+  static const String keyEarnedBadges = 'earned_badges';
   // 耳学（リスニング）の再生設定を記憶する。
   static const String keyListenSpeed = 'listen_speed';
   static const String keyListenRepeat = 'listen_repeat';

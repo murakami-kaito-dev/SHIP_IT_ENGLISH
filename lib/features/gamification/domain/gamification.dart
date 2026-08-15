@@ -23,6 +23,13 @@ class GamificationConfig {
   /// 少しずつ増える緩やかなカーブ。
   static int xpForLevel(int level) => 60 + level * 40;
 
+  // --- パーフェクトセッション ---
+  /// 全カードを1回で「覚えてた」で終えたセッションのボーナスXP。
+  static const int perfectBonusXp = 25;
+
+  /// パーフェクト判定の最低カード数（数枚だけのセッションで乱発しないため）。
+  static const int perfectMinCards = 5;
+
   // --- ストリーク保護（XPで交換する特典） ---
   /// ストリーク保護1つの交換コスト（使えるXP）。
   static const int streakFreezeCost = 200;

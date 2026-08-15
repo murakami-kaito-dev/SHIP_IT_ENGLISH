@@ -84,3 +84,19 @@ class DailyStats {
     };
   }
 }
+
+/// パーフェクトセッション判定（純関数・テスト可能）。
+/// 「全カードを1回で『覚えてた』で終えた」＝ results のすべてが remembered
+/// （forgot があれば再出題が混ざり、uncertain は完璧ではない）。
+/// ユニットテスト（卒業テスト）は対象外、最低枚数未満も対象外。
+bool isPerfectSession({
+  required List<CardResult> results,
+  required int uniqueCount,
+  required bool unitTest,
+  required int minCards,
+}) {
+  if (unitTest) return false;
+  if (uniqueCount < minCards) return false;
+  if (results.isEmpty) return false;
+  return results.every((r) => r.rating == Rating.remembered);
+}
