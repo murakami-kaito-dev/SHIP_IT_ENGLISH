@@ -21,7 +21,8 @@
 3. **`DailyQuestsCard`（今日のクエスト＋宝箱）**：日替わり3件のお題（進捗バー＋x/y）と宝箱エリア。全達成で宝箱（XP30〜60＋10%で保護+1）。initState の `ensureToday()` で日付切替。詳細は [systems/gamification.md](../systems/gamification.md) の「デイリークエスト」。
 4. **`_LevelCard`（経験値/レベル）**：`gamificationProvider.snapshot` を watch。通算XP（`totalXpValue`）＋ **称号ピル**（`rankName(rankForLevel(level))`）＋ `XPProgressBar`（LVバッジ＋ゲージ）＋ 次LVまでの残りXP（`xpToNext`）。**獲得経験値を確認できる常設の場所**。XPは起動時に `keyTotalXp` から復元される（[systems/gamification.md](../systems/gamification.md)）。
 5. **`_StreakShieldCard`（XPの使い道＝ストリーク保護）**：使えるXP（`availableXpLabel`）・所持盾（最大`maxStreakFreezes`）・交換ボタン（`buyStreakFreeze`・コスト`streakFreezeCost`）。起動時に保護が自動消費されていたら `_HomeScreenState` が SnackBar で一度だけ通知（`takeStreakFreezeUsedNotice`→`refreshStreakFreezes`）。※このため HomeScreen は `ConsumerStatefulWidget`。
-6. 週間サマリー棒グラフ、全体進捗バー（`studiedCount`基準）。
+6. 週間サマリー棒グラフ。
+7. **`SkillScoreCard`（技術英語カバレッジ）**：実力の単一スコア（リングゲージ＋%）。SRS状態の重み付き（learning0.25/review0.6/mastered1.0）で `skillScoreProvider`（`getStatusCounts` GROUP BY）から算出。従来の「全体進捗バー」を置き換え（学習済み/習得の数字はサブ表示として内包）。
 
 ## 重要な仕様
 - **今日の残り新規枠 = 1日の上限 − 今日学習した新規（daily_stats.new_cards）**。途中でやめて再開しても満タンに戻らない（0/40→3枚やって0/37）。日付が変わると上限にリセット。

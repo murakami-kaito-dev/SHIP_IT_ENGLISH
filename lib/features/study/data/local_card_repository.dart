@@ -230,6 +230,18 @@ class LocalCardRepository implements CardRepository {
     return result.first['count'] as int? ?? 0;
   }
 
+  /// SRS状態ごとの枚数（'new'/'learning'/'review'/'mastered' → 件数）。
+  /// 技術英語カバレッジ（スキルスコア）の算出に使う。
+  Future<Map<String, int>> getStatusCounts() async {
+    final db = await _db.database;
+    final rows = await db.rawQuery(
+      'SELECT status, COUNT(*) as count FROM learning_progress GROUP BY status',
+    );
+    return {
+      for (final r in rows) r['status'] as String: r['count'] as int? ?? 0,
+    };
+  }
+
   /// カテゴリごとの「学習開始済み」カード数（status != 'new'）
   Future<Map<String, int>> getCategoryStudiedCounts() async {
     final db = await _db.database;

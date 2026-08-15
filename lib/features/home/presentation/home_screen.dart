@@ -6,11 +6,11 @@ import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/services/streak_manager.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
+import 'package:ship_it_english/features/home/presentation/widgets/skill_score_card.dart';
 import 'package:ship_it_english/features/home/providers/home_providers.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
 import 'package:ship_it_english/features/study/presentation/widgets/range_study_sheet.dart';
 import 'package:ship_it_english/shared/widgets/gradient_button.dart';
-import 'package:ship_it_english/shared/widgets/progress_bar.dart';
 import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/streak_widget.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
@@ -52,7 +52,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final sessionInfo = ref.watch(dailySessionInfoProvider);
-    final progress = ref.watch(overallProgressProvider);
+    final skill = ref.watch(skillScoreProvider);
     final weekly = ref.watch(weeklyStatsProvider);
     final strings = ref.watch(stringsProvider);
 
@@ -91,7 +91,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(dailySessionInfoProvider);
-          ref.invalidate(overallProgressProvider);
+          ref.invalidate(skillScoreProvider);
           ref.invalidate(weeklyStatsProvider);
         },
         child: SingleChildScrollView(
@@ -130,10 +130,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     _WeeklySummaryCard(days: days, strings: strings),
               ),
               const SizedBox(height: 24),
-              progress.when(
+              // 技術英語カバレッジ（実力の単一スコア。続けると上がる）
+              skill.when(
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
-                data: (p) => _buildProgressSection(p, strings),
+                data: (s) => SkillScoreCard(score: s, strings: strings),
               ),
             ],
           ),
@@ -185,42 +186,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildProgressSection(OverallProgress p, AppStrings strings) {
-    return Container(
-      padding: AppTheme.cardPadding,
-      decoration: AppTheme.cardDecoration,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(strings.progressTitle, style: AppTheme.headingMedium),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(strings.studiedOf(p.studiedCount, p.totalCount),
-                  style: AppTheme.bodyText),
-              Text('${(p.percentage * 100).round()}%',
-                  style: AppTheme.monoNumber.copyWith(color: AppTheme.primary)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ProgressBar(value: p.percentage),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(Icons.verified_rounded,
-                  size: 14, color: AppTheme.ratingRemembered),
-              const SizedBox(width: 5),
-              Text(
-                strings.masteredCountLabel(p.masteredCount),
-                style: AppTheme.captionText,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// 通算で獲得した経験値（XP）と現在のレベルを表示するカード。

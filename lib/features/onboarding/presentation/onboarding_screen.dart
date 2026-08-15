@@ -6,6 +6,9 @@ import 'package:ship_it_english/core/constants/app_constants.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
+import 'package:ship_it_english/core/providers/core_providers.dart';
+import 'package:ship_it_english/features/onboarding/providers/placement_providers.dart';
+import 'package:ship_it_english/features/study/domain/skill_score.dart';
 import 'package:ship_it_english/shared/widgets/app_background.dart';
 import 'package:ship_it_english/shared/widgets/new_cards_setting.dart';
 
@@ -22,6 +25,12 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _page = 0;
+
+  /// 初期診断で「知ってる」と選んだカードID。
+  final Set<String> _knownIds = {};
+
+  /// 二重タップで診断の反映が重複しないためのガード。
+  bool _applying = false;
 
   @override
   void dispose() {
@@ -47,6 +56,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (mounted) context.go('/');
   }
 
+  /// 初期診断の「知ってる」を学習進捗に反映してから完了する。
+  /// 知っているカードは復習状態（7日後）としてSRSに乗り、新規キューを飛ばす。
+  Future<void> _applyPlacementAndFinish() async {
+    if (_applying) return;
+    _applying = true;
+    try {
+      final repo = ref.read(cardRepositoryProvider);
+      final now = DateTime.now();
+      for (final id in _knownIds) {
+        await repo.saveProgress(placementKnownProgress(id, now));
+      }
+    } catch (_) {
+      // 診断の反映に失敗してもオンボーディングは完了させる（学習で追いつける）
+    }
+    await _finish();
+  }
+
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(languageModeProvider);
@@ -68,6 +94,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   _buildHowToPage(isJa),
                   _buildSrsPage(isJa),
                   _buildNewCardsPage(isJa),
+                  _buildPlacementPage(),
                 ],
               ),
             ),
@@ -75,7 +102,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               padding: const EdgeInsets.only(bottom: 24),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(4, (i) {
+                children: List.generate(5, (i) {
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     width: _page == i ? 24 : 8,
@@ -216,8 +243,113 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
           const SizedBox(height: 32),
           ElevatedButton(
+            onPressed: _next,
+            child: Text(isJa ? '次へ' : 'Next'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // === Page 5: かんたんレベル診断（知っているフレーズを選ぶ → 開始位置に反映） ===
+  Widget _buildPlacementPage() {
+    final strings = ref.watch(stringsProvider);
+    final cardsAsync = ref.watch(placementCardsProvider);
+
+    return Padding(
+      padding: AppTheme.screenPadding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 8),
+          const Text('📍',
+              style: TextStyle(fontSize: 44), textAlign: TextAlign.center),
+          const SizedBox(height: 10),
+          Text(strings.placementTitle,
+              style: AppTheme.headingLarge, textAlign: TextAlign.center),
+          const SizedBox(height: 6),
+          Text(strings.placementBody,
+              style: AppTheme.captionText, textAlign: TextAlign.center),
+          const SizedBox(height: 14),
+          Expanded(
+            child: cardsAsync.when(
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
+              error: (_, __) => const SizedBox.shrink(),
+              data: (cards) => ListView.separated(
+                itemCount: cards.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, i) {
+                  final card = cards[i];
+                  final known = _knownIds.contains(card.id);
+                  return Material(
+                    color: known
+                        ? AppTheme.primaryLight
+                        : AppTheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => setState(() {
+                        known
+                            ? _knownIds.remove(card.id)
+                            : _knownIds.add(card.id);
+                      }),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: known
+                                ? AppTheme.primary
+                                : AppTheme.surfaceBorder,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              known
+                                  ? Icons.check_circle_rounded
+                                  : Icons.circle_outlined,
+                              size: 20,
+                              color: known
+                                  ? AppTheme.primary
+                                  : AppTheme.textTertiary,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    card.phrase,
+                                    style: AppTheme.bodyText.copyWith(
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                  Text(card.translation,
+                                      style: AppTheme.captionText),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            onPressed: _applyPlacementAndFinish,
+            child: Text(strings.placementStart),
+          ),
+          TextButton(
             onPressed: _finish,
-            child: Text(isJa ? '始める' : 'Get Started'),
+            child: Text(strings.placementSkip,
+                style: AppTheme.captionText),
           ),
         ],
       ),

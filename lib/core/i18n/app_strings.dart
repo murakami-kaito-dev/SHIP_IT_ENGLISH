@@ -455,6 +455,27 @@ class AppStrings {
     };
   }
 
+  // --- 技術英語カバレッジ（実力の単一スコア）＋初期診断 ---
+  String get skillScoreTitle =>
+      mode == LanguageMode.ja ? '技術英語カバレッジ' : 'Tech English Coverage';
+
+  String get skillScoreCaption => mode == LanguageMode.ja
+      ? '全カードのうち身についている割合。続けると上がります'
+      : 'How much of the deck you own. Keep studying to raise it';
+
+  String get placementTitle =>
+      mode == LanguageMode.ja ? 'かんたんレベル診断' : 'Quick placement check';
+
+  String get placementBody => mode == LanguageMode.ja
+      ? 'すでに知っているフレーズをタップしてください。学習の開始位置に反映されます（あとから変わるので気楽に）'
+      : 'Tap the phrases you already know. This sets your starting point (it adjusts as you learn, so relax)';
+
+  String get placementStart =>
+      mode == LanguageMode.ja ? 'この内容で始める' : 'Start with this';
+
+  String get placementSkip =>
+      mode == LanguageMode.ja ? 'スキップして始める' : 'Skip and start';
+
   // --- ユニット制（約20枚ごとの関門＋卒業テスト） ---
   String get unitsSectionTitle => mode == LanguageMode.ja ? 'ユニット' : 'Units';
 

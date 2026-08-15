@@ -18,6 +18,7 @@ void invalidateProgressProviders(WidgetRef ref) {
   // 集計系
   ref.invalidate(dailySessionInfoProvider);
   ref.invalidate(overallProgressProvider);
+  ref.invalidate(skillScoreProvider); // 技術英語カバレッジ
   ref.invalidate(weeklyStatsProvider);
   ref.invalidate(categoriesProvider);
   ref.invalidate(studyDaysProvider); // 学習カレンダー

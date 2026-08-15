@@ -6,6 +6,7 @@ import 'package:ship_it_english/core/services/streak_manager.dart';
 import 'package:ship_it_english/core/utils/date_utils.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
 import 'package:ship_it_english/features/study/data/local_card_repository.dart';
+import 'package:ship_it_english/features/study/domain/skill_score.dart';
 
 class DailySessionInfo {
   /// 今日のセッションで出題する新規カード数（＝今日の残り新規枠）
@@ -145,6 +146,18 @@ final weeklyStatsProvider = FutureProvider<List<DayStudy>>((ref) async {
       isToday: date == today,
     );
   });
+});
+
+/// 技術英語カバレッジ（実力スコア）。SRS状態の内訳から重み付きで算出する。
+final skillScoreProvider = FutureProvider<SkillScore>((ref) async {
+  final repo = ref.watch(cardRepositoryProvider) as LocalCardRepository;
+  final counts = await repo.getStatusCounts();
+  return SkillScore(
+    newCount: counts['new'] ?? 0,
+    learningCount: counts['learning'] ?? 0,
+    reviewCount: counts['review'] ?? 0,
+    masteredCount: counts['mastered'] ?? 0,
+  );
 });
 
 final overallProgressProvider = FutureProvider<OverallProgress>((ref) async {
