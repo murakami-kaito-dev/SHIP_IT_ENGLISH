@@ -63,3 +63,12 @@
 - SessionComplete：`ConfettiCelebration`＋`StreakWidget(large)`＋獲得XP＋`XPProgressBar`。
 - Home：ヘッダー `StreakWidget`（目標達成で強発光）＋ **`_LevelCard`（通算XP `totalXpValue` ＋ `XPProgressBar` ＋ 次LVまでの残りXP `xpToNext`）＝獲得経験値を常設で確認できる場所**。
 - CTA `GradientButton` は押下 scale(0.95) spring（`onHighlightChanged`駆動）。
+
+## マスコット「ダッキー」（[duck_mascot.dart](../../../lib/features/gamification/presentation/widgets/duck_mascot.dart)）
+- **エンジニア文化の「ラバーダック・デバッグ」にちなんだ相棒**。感情的つながり（アプリの人格）を作る。
+- **CustomPainter のドット絵**（16×14グリッド・画像アセット不要・オフライン）。`DuckMood`＝idle（ゆっくり浮遊）/ happy（弾む）/ cheer（大きく弾む＋首振り）。
+- 出す場所：
+  - **Home AppBar 常駐**（`_HomeDuck`）：今日学習済みなら happy。**タップでランダムな一言**（`AppStrings.duckLines`・応援/Tips）を SnackBar 表示。
+  - **セッション完了画面**：チェックマーク横で cheer。
+  - **毎日リマインダー通知**：本文を `duckReminderLines` からランダム選択（🦆の人格。起動ごとの rescheduleAll で文面が変わる）。
+- 文言はすべて `AppStrings`（ja/en）。

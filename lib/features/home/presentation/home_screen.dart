@@ -1,4 +1,6 @@
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,6 +17,7 @@ import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/streak_widget.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/daily_quests_card.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/duck_mascot.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
 import 'package:ship_it_english/features/gamification/providers/quests_providers.dart';
 
@@ -87,6 +90,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
         centerTitle: false,
+        actions: const [
+          // マスコット「ダッキー」（タップで一言。今日学習済みならご機嫌に弾む）
+          Padding(
+            padding: EdgeInsets.only(right: 14),
+            child: _HomeDuck(),
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -810,4 +820,39 @@ class _InfoRow extends StatelessWidget {
 
 extension _ObjectExtension<T> on T {
   R let<R>(R Function(T) block) => block(this);
+}
+
+/// ホームAppBar常駐のダッキー。今日学習済みならご機嫌（happy）で弾む。
+/// タップでランダムな一言（応援・Tips）を SnackBar で話す。
+class _HomeDuck extends ConsumerWidget {
+  const _HomeDuck();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final strings = ref.watch(stringsProvider);
+    final studiedToday = ref
+            .watch(dailySessionInfoProvider)
+            .asData
+            ?.value
+            .hasStudiedToday ??
+        false;
+    return Semantics(
+      label: strings.duckName,
+      button: true,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () {
+          final lines = strings.duckLines;
+          final line = lines[math.Random().nextInt(lines.length)];
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text('🦆 $line')));
+        },
+        child: DuckMascot(
+          size: 40,
+          mood: studiedToday ? DuckMood.happy : DuckMood.idle,
+        ),
+      ),
+    );
+  }
 }

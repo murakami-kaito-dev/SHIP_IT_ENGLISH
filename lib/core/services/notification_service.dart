@@ -117,9 +117,10 @@ class NotificationService {
     await cancelDailyReminder();
 
     final mode = await _languageMode();
-    final body = mode == LanguageMode.ja
-        ? '今日の技術英語を学習しましょう！🚀'
-        : "Today's session is ready. Let's study! 🚀";
+    // マスコット「ダッキー」の一言をランダムに選ぶ（通知に人格を持たせる。
+    // 起動時の rescheduleAll で組み直されるたびに文面が変わる）
+    final lines = AppStrings.of(mode).duckReminderLines;
+    final body = lines[Random().nextInt(lines.length)];
 
     const androidDetails = AndroidNotificationDetails(
       AppConstants.notificationChannelId,

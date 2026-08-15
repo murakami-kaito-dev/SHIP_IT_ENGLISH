@@ -455,6 +455,39 @@ class AppStrings {
     };
   }
 
+  // --- ラバーダック・マスコット「ダッキー」 ---
+  String get duckName => mode == LanguageMode.ja ? 'ダッキー' : 'Ducky';
+
+  /// ホームのダックをタップしたときの一言（ランダムに選ぶ）。
+  List<String> get duckLines => mode == LanguageMode.ja
+      ? const [
+          'ガーガー！今日もいっしょに学ぼう',
+          '詰まったらアヒルに説明してみて。それがデバッグのコツ',
+          '5分やれば、今日の自分にLGTM',
+          'ストリークは資産。今日も1日分積もう',
+          '発音は🔊ボタンで何度でも聴けるよ',
+        ]
+      : const [
+          "Quack! Ready when you are",
+          'Stuck? Explain it to the duck — that is the debugging trick',
+          'Five minutes today = LGTM to yourself',
+          'Streaks compound. Stack one more day',
+          'Tap 🔊 anytime to replay the pronunciation',
+        ];
+
+  /// 毎日リマインダー通知の本文（ダックの人格。スケジュール時にランダム選択）。
+  List<String> get duckReminderLines => mode == LanguageMode.ja
+      ? const [
+          '🦆 ガーガー！今日のカードがデッキで待ってるよ',
+          '🦆 5分だけ、いっしょにデバッグしない？',
+          '🦆 今日も1コミット、英語をシップしよう！',
+        ]
+      : const [
+          "🦆 Quack! Today's cards are waiting in your deck",
+          "🦆 Got 5 minutes? Let's debug some English",
+          '🦆 Ship one commit of English today!',
+        ];
+
   // --- 技術英語カバレッジ（実力の単一スコア）＋初期診断 ---
   String get skillScoreTitle =>
       mode == LanguageMode.ja ? '技術英語カバレッジ' : 'Tech English Coverage';

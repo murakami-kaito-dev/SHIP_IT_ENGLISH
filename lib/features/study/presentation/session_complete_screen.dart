@@ -8,6 +8,7 @@ import 'package:ship_it_english/core/services/sound_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/confetti_celebration.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/duck_mascot.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/streak_widget.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
@@ -102,17 +103,25 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // グラデーションの円に載せたチェックマーク（達成感）
-                Container(
-                  width: 76,
-                  height: 76,
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    shape: BoxShape.circle,
-                    boxShadow: AppTheme.buttonShadow,
-                  ),
-                  child: const Icon(Icons.check_rounded,
-                      color: Colors.white, size: 42),
+                // お祝いに弾むダッキー＋チェックマーク（達成感）
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        shape: BoxShape.circle,
+                        boxShadow: AppTheme.buttonShadow,
+                      ),
+                      child: const Icon(Icons.check_rounded,
+                          color: Colors.white, size: 42),
+                    ),
+                    const SizedBox(width: 10),
+                    const DuckMascot(size: 52, mood: DuckMood.cheer),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 Text(strings.sessionCompleteTitle,
