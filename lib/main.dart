@@ -8,6 +8,7 @@ import 'package:ship_it_english/core/database/seed_data.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/core/providers/core_providers.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
+import 'package:ship_it_english/core/services/home_widget_service.dart';
 import 'package:ship_it_english/core/services/notification_service.dart';
 import 'package:ship_it_english/core/services/streak_manager.dart';
 import 'package:ship_it_english/core/utils/date_utils.dart';
@@ -35,6 +36,11 @@ Future<void> main() async {
   final studiedToday = await LocalCardRepository(dbHelper)
       .hasStudiedToday(DateTime.now().toDateString());
   await notificationService.rescheduleAll(studiedToday: studiedToday);
+
+  // 4.5 ホーム画面ウィジェットへ最新状態を反映（起動を遅らせない fire-and-forget）
+  //     アプリを開かない日も🔥ストリークがホーム画面に見える
+  // ignore: unawaited_futures
+  HomeWidgetService.sync(LocalCardRepository(dbHelper));
 
   // 5. 言語モード・オンボーディング状態の読み込み
   final prefs = await SharedPreferences.getInstance();

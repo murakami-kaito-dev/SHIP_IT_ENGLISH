@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/providers/progress_refresh.dart';
+import 'package:ship_it_english/core/providers/core_providers.dart';
+import 'package:ship_it_english/core/services/home_widget_service.dart';
 import 'package:ship_it_english/core/services/review_service.dart';
 import 'package:ship_it_english/core/services/sound_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
@@ -13,6 +15,7 @@ import 'package:ship_it_english/features/gamification/presentation/widgets/strea
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
 import 'package:ship_it_english/features/home/providers/home_providers.dart';
+import 'package:ship_it_english/features/study/data/local_card_repository.dart';
 import 'package:ship_it_english/features/study/providers/study_providers.dart';
 import 'package:ship_it_english/shared/widgets/app_background.dart';
 import 'package:ship_it_english/shared/widgets/gradient_button.dart';
@@ -34,6 +37,10 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
       // これを忘れると「習得済み 0/195」「復習するカードはありません」の
       // 古い表示が残る
       invalidateProgressProviders(ref);
+
+      // ホーム画面ウィジェットにも最新のストリーク・今日の枚数を反映
+      HomeWidgetService.sync(
+          ref.read(cardRepositoryProvider) as LocalCardRepository);
 
       // セレブレーション（紙吹雪は画面側で自動発火・ここで音と振動）
       SoundService.instance.celebrate();

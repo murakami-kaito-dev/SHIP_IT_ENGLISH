@@ -34,3 +34,15 @@
 
 ## アプリアイコン
 - マスター `assets/icon/app_icon.png`。差し替え後 `dart run flutter_launcher_icons`（iOS/Android再生成・iOSはalpha除去）。現行アイコンはターミナル風「> LGTM」。
+
+## iOSホーム画面ウィジェット（[home_widget_service.dart](../../../lib/core/services/home_widget_service.dart) / `ios/ShipItWidget/`）
+- **目的**：アプリを開かない日も🔥ストリークと今日の進捗がホーム画面に見える（Duolingoのウィジェットと同じ継続効果）。
+- **仕組み**：`home_widget` パッケージで **App Group（`group.jp.co.shipitenglish.app`）の UserDefaults** に `hw_streak / hw_today / hw_goal / hw_score` を書き、`updateWidget` で WidgetKit を更新するだけ。**通信なし**（「データ収集なし」申告に影響しない）。
+- **同期タイミング**：起動時（main.dart・fire-and-forget）＋セッション完了画面（invalidate直後）。保険としてウィジェット側も30分ごとに再読込。
+- **ネイティブ**：`ios/ShipItWidget/`（Swift・WidgetKit `StaticConfiguration`・systemSmall・iOS16+・iOS17は `containerBackground` シム）。表示は 🔥streak（主役）＋ TODAY x/y（達成で✓）＋ COVERAGE %（mono・Terminal-grade）。
+- **ターゲット追加は `tools/add_widget_target.rb`**（CocoaPods 同梱の xcodeproj gem で pbxproj を編集。冪等）。要点：
+  - 拡張のベース構成に **`Generated.xcconfig`** を割り当て、Info.plist の版数を `$(FLUTTER_BUILD_NAME)/$(FLUTTER_BUILD_NUMBER)` に＝**アプリとウィジェットの版数不一致を防ぐ**
+  - `PRODUCT_NAME=$(TARGET_NAME)` を明示（無いと `.appex` が空名になり "Multiple commands produce" で失敗）
+  - **「Embed Foundation Extensions」フェーズは Thin Binary より前**に置く（後だと "Cycle inside Runner"）
+  - Runner 本体にも `Runner.entitlements`（同じ App Group）を割り当て
+- ⚠️ **実機/配信ビルドは App Group のプロビジョニング登録が必要**。自動署名なら Xcode で一度開くか `-allowProvisioningUpdates` 付きビルドで登録される（シミュレータは署名不要で動作確認可）。
