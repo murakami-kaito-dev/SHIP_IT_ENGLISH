@@ -446,6 +446,12 @@ class AppStrings {
     };
   }
 
+  // --- マイルストーンバッジ ---
+  String get badgesTitle => mode == LanguageMode.ja ? 'バッジ' : 'Badges';
+
+  String get newBadgeTitle =>
+      mode == LanguageMode.ja ? '🎖️ 新しいバッジを獲得！' : '🎖️ New badge unlocked!';
+
   // --- パーフェクトセッション ---
   String get perfectTitle => 'PERFECT!';
 

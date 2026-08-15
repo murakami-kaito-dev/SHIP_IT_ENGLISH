@@ -90,9 +90,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
         centerTitle: false,
-        actions: const [
+        actions: [
+          // バッジ（実績）一覧への入口
+          IconButton(
+            icon: const Icon(Icons.emoji_events_rounded,
+                color: AppTheme.primary),
+            tooltip: strings.badgesTitle,
+            onPressed: () => context.push('/badges'),
+          ),
           // マスコット「ダッキー」（タップで一言。今日学習済みならご機嫌に弾む）
-          Padding(
+          const Padding(
             padding: EdgeInsets.only(right: 14),
             child: _HomeDuck(),
           ),

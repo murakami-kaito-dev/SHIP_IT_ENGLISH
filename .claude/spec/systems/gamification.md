@@ -72,3 +72,11 @@
   - **セッション完了画面**：チェックマーク横で cheer。
   - **毎日リマインダー通知**：本文を `duckReminderLines` からランダム選択（🦆の人格。起動ごとの rescheduleAll で文面が変わる）。
 - 文言はすべて `AppStrings`（ja/en）。
+
+## マイルストーンバッジ（[badges.dart](../../../lib/features/gamification/domain/badges.dart) / [badges_providers.dart](../../../lib/features/gamification/providers/badges_providers.dart) / [badges_screen.dart](../../../lib/features/gamification/presentation/badges_screen.dart)）
+- **目的**：中長期の継続動機（コレクション欲・「次のバッジまであと少し」）。判定は端末内統計のみ・通信なし。
+- **全18種**：ストリーク3/7/30/100・学習100/500/1500枚・ユニット1/10/30・パーフェクト1/10・称号到達6種（レベル5/10/16/24/34/50＝**rankForLevel の閾値と同期させること**。badges_test が同期を恒久ガード）。
+- 定義は `allBadges`（バイリンガル名/説明を内包・カテゴリ定義と同方式）。判定は純関数 `isBadgeEarned`/`newlyEarnedBadges`。
+- **獲得記録**：`earnedBadgesProvider`（id→獲得日ISO・prefs `keyEarnedBadges`・重複付与なし）。
+- **判定タイミング**：`checkAndAwardBadges(ref)` をセッション完了画面（900ms後にお祝いモーダル）とユニットクリア後（クリアダイアログの後）に呼ぶ。
+- **UI**：`/badges`（3列グリッド・獲得=カラー＋獲得日/未獲得=グレー＋条件・ヘッダーに x/18）。入口は Home AppBar のトロフィー🏆。新規獲得は `showNewBadgesModal`（elasticOut）。

@@ -21,7 +21,9 @@ import 'package:ship_it_english/core/constants/app_constants.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
 import 'package:ship_it_english/features/gamification/providers/quests_providers.dart';
+import 'package:ship_it_english/features/gamification/presentation/badges_screen.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/confetti_celebration.dart';
+import 'package:ship_it_english/features/gamification/providers/badges_providers.dart';
 import 'package:ship_it_english/features/study/domain/quiz.dart';
 import 'package:ship_it_english/features/study/domain/units.dart';
 import 'package:ship_it_english/features/study/presentation/widgets/quiz_card.dart';
@@ -287,6 +289,18 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
       SoundService.instance.celebrate();
       await _showUnitResultDialog(
           passed: true, mistakes: mistakes, strings: strings);
+      // ユニットクリアでバッジ（初クリア/10/30個）が増えていたらお祝い
+      if (mounted) {
+        final newBadges = await checkAndAwardBadges(ref);
+        if (newBadges.isNotEmpty && mounted) {
+          await showNewBadgesModal(
+            context,
+            badges: newBadges,
+            strings: strings,
+            mode: ref.read(languageModeProvider),
+          );
+        }
+      }
       if (mounted) context.go('/category/$categoryId');
       return;
     }

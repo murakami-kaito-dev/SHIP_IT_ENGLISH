@@ -10,7 +10,9 @@ import 'package:ship_it_english/core/services/sound_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/confetti_celebration.dart';
+import 'package:ship_it_english/features/gamification/presentation/badges_screen.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/duck_mascot.dart';
+import 'package:ship_it_english/features/gamification/providers/badges_providers.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/streak_widget.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
@@ -44,6 +46,20 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
 
       // セレブレーション（紙吹雪は画面側で自動発火・ここで音と振動）
       SoundService.instance.celebrate();
+
+      // マイルストーンバッジの判定（新規獲得があれば少し置いてお祝い）
+      checkAndAwardBadges(ref).then((newBadges) {
+        if (newBadges.isEmpty || !mounted) return;
+        Future.delayed(const Duration(milliseconds: 900), () {
+          if (!mounted) return;
+          showNewBadgesModal(
+            context,
+            badges: newBadges,
+            strings: ref.read(stringsProvider),
+            mode: ref.read(languageModeProvider),
+          );
+        });
+      });
 
       // 結果表示が落ち着いたタイミングでアプリ内レビューを依頼
       // （ストリーク3日以上・過去に未依頼の場合のみ表示される）

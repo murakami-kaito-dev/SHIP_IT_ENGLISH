@@ -8,6 +8,7 @@ import 'package:ship_it_english/core/providers/notification_permission_provider.
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/shared/widgets/app_background.dart';
 import 'package:ship_it_english/features/categories/presentation/categories_screen.dart';
+import 'package:ship_it_english/features/gamification/presentation/badges_screen.dart';
 import 'package:ship_it_english/features/categories/presentation/category_detail_screen.dart';
 import 'package:ship_it_english/features/history/presentation/history_screen.dart';
 import 'package:ship_it_english/features/listening/presentation/listening_screen.dart';
@@ -85,6 +86,10 @@ GoRouter createRouter({required bool showOnboarding}) {
             ),
           );
         },
+      ),
+      GoRoute(
+        path: '/badges',
+        builder: (_, __) => const BadgesScreen(),
       ),
       GoRoute(
         path: '/category/:id',
