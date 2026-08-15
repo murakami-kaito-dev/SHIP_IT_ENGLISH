@@ -87,10 +87,21 @@ class _QuestRow extends StatelessWidget {
         QuestType.listenLines => Icons.headphones_rounded,
       };
 
+  /// クエスト種類ごとの配色（タイル=soft / ゲージ=deep）。
+  /// 意味で色を使い分ける（案Hの多彩色パレット）。
+  (Color, Color) get _questColors => switch (quest.type) {
+        QuestType.studyCards => (AppTheme.questYellowSoft, AppTheme.questYellow),
+        QuestType.comboReach => (AppTheme.questBlueSoft, AppTheme.questBlue),
+        QuestType.remembered => (AppTheme.questGreenSoft, AppTheme.questGreen),
+        QuestType.listenLines =>
+          (AppTheme.questOrangeSoft, AppTheme.questOrange),
+      };
+
   @override
   Widget build(BuildContext context) {
     final clamped = value.clamp(0, quest.target);
-    final color = done ? AppTheme.ratingRemembered : AppTheme.primary;
+    final (softColor, deepColor) = _questColors;
+    final color = done ? AppTheme.ratingRemembered : deepColor;
     return Row(
       children: [
         Container(
@@ -100,11 +111,12 @@ class _QuestRow extends StatelessWidget {
           decoration: BoxDecoration(
             color: done
                 ? AppTheme.ratingRemembered.withOpacity(0.12)
-                : AppTheme.primaryLight,
+                : softColor,
             borderRadius: BorderRadius.circular(9),
           ),
           child: Icon(done ? Icons.check_rounded : _icon,
-              size: 18, color: color),
+              size: 18,
+              color: done ? AppTheme.ratingRemembered : AppTheme.textPrimary),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -122,12 +134,12 @@ class _QuestRow extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               ClipRRect(
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(4),
                 child: SizedBox(
-                  height: 5,
+                  height: 8,
                   child: Stack(
                     children: [
-                      Container(color: AppTheme.primaryLight),
+                      Container(color: AppTheme.track),
                       FractionallySizedBox(
                         widthFactor:
                             (clamped / quest.target).clamp(0.0, 1.0),

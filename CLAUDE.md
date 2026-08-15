@@ -254,18 +254,28 @@ test/
 
 ---
 
-## デザインシステム（"Terminal-grade" — 開発者ツール風）
+## デザインシステム（"Soft Arcade Warm" — 採用案H＝色:案E×骨格:案F）
 
-「平面的で奥行きがない」を解消するために全画面を刷新した。**色・影・角丸・テキストスタイルはすべて `core/theme/app_theme.dart`（`AppTheme`）に集約**されており、各画面は `AppTheme.*` を参照するだけ。ここを変えれば全画面に波及する。
+2026-08 に全面刷新（旧 Terminal-grade から移行。検討過程は `lib/dev/design_previews/` の8案と
+タグ `feat/design-previews` 参照）。**色・影・角丸・テキストスタイルはすべて
+`core/theme/app_theme.dart`（`AppTheme`）に集約**されており、ここを変えれば全画面に波及する。
 
-- **カラー**: インディゴ基調（`primary = #5B54E6`）。CTA は `primaryGradient`、背景は `backgroundGradient`（上から下へ僅かに沈む）
-- **奥行き**: `cardShadow`（インク色2層）/ `heroShadow`（学習カード用の強い primary 影）/ `buttonShadow`（primary グロー）。カードは `AppTheme.cardDecoration` を使う
-- **モノスペース識別子**: 数値・進捗率・タグは iOS 内蔵の等幅フォント `AppTheme.monoFont`（Menlo）。`monoNumber` / `monoNumberLarge` / `monoLabel` を使う。**`google_fonts` は使わない**（実行時ネットワーク取得になり「データ収集なし」申告と衝突する）
+- **世界観**: 温かい紙色の背景（`background #FAF7EF`）×暖色の細枠1.5px（`surfaceBorder #E9E4D8`）×
+  「下エッジで押すと沈む」立体ボタン×意味で使い分ける多彩色。ゲーム感はほどよく・線は細く大人に
+- **下エッジ（押せる厚み）**: カードは `cardShadow`＝`surfaceEdge` の solid シャドウ1枚（blurなし・軽量）。
+  CTA は `GradientButton`（名前は互換維持・実体は「下エッジ5px・押下で沈む」ボタン）。
+  学習カードのみ `heroShadow`（インディゴ浮遊＋暖色接地）
+- **多彩色パレット**: クエスト等は `quest{Yellow,Green,Blue,Orange}(±Soft)`（案E由来のマーカー系）。
+  soft=タイル背景 / 無印=ゲージ。種類→色の対応は daily_quests_card の `_questColors`
+- **ゲージの溝は `AppTheme.track`**（暖色 #F1EDE2。progress_bar / xp_progress_bar / クエスト共通）
+- **モノスペース識別子**: 数値・進捗率・タグは iOS 内蔵 Menlo（`monoFont`）。`google_fonts` は使わない
+  （実行時ネットワーク取得＝「データ収集なし」申告と衝突）
 - **共通部品**:
-  - `shared/widgets/gradient_button.dart` … 主要CTA（グラデ＋影＋ハプティクス）。ElevatedButton の代わりにこれを使う
-  - `shared/widgets/app_background.dart` … 背景グラデーション。**タブ画面は AppShell が包む**ので Scaffold を `backgroundColor: Colors.transparent` にするだけ。**フルスクリーン遷移（study / session-complete / history / category詳細 / search / paywall / onboarding）は `AppBackground(child: Scaffold(...))` の形で Scaffold 全体を包む**（body だけを包むと AppBar・ステータスバー裏やコンテンツ下部が黒く残る＝グラデが画面全体に届かない。必ず Scaffold ごと包み、Scaffold と AppBar は透明のまま）
-- **影のクリッピングに注意**: `borderRadius` を持つ `Material` は子をクリップするため、内側の `boxShadow` が消える。`DecoratedBox(cardDecoration) > Material(transparent, clipBehavior: antiAlias) > InkWell > Padding` の順で組む（`card_list_tile.dart` 参照）
-- **アイコンは `_rounded` 系で統一**（home_rounded, play_arrow_rounded など）
+  - `shared/widgets/gradient_button.dart` … 主要CTA（下エッジ押下・ハプティクス）。ElevatedButton の代わりにこれ
+  - `shared/widgets/app_background.dart` … 背景グラデ。タブ画面は AppShell が包む。**フルスクリーン遷移は
+    `AppBackground(child: Scaffold(...))` で Scaffold ごと包む**（bodyだけだと周囲が黒く残る）
+- **アイコンは `_rounded` 系で統一**／マスコットはピクセルのダッキー（`duck_mascot.dart`・ランク進化）
+- デザインプレビューの起動: `flutter run -t lib/main_design_preview.dart`（本体無変更・8案スワイプ比較）
 
 ---
 

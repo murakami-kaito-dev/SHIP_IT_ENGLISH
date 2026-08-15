@@ -46,3 +46,8 @@
   - **「Embed Foundation Extensions」フェーズは Thin Binary より前**に置く（後だと "Cycle inside Runner"）
   - Runner 本体にも `Runner.entitlements`（同じ App Group）を割り当て
 - ⚠️ **実機/配信ビルドは App Group のプロビジョニング登録が必要**。自動署名なら Xcode で一度開くか `-allowProvisioningUpdates` 付きビルドで登録される（シミュレータは署名不要で動作確認可）。
+
+## デザインシステム刷新（2026-08・案H "Soft Arcade Warm"）
+- 旧 Terminal-grade → **案H（色=案Eの暖色マーカーパレット × 骨格=案Fの細線+下エッジ）**へ全面刷新。トークンは [app_theme.dart](../../../lib/core/theme/app_theme.dart) に集約（背景 #FAF7EF / 枠 #E9E4D8 1.5px / 下エッジ `surfaceEdge` / 溝 `track` / クエスト4色 `quest*`）。
+- `GradientButton` は「下エッジ5pxで押すと沈む」立体ボタンに（API互換）。カード影は solid 下エッジ1枚。
+- 検討過程: [lib/dev/design_previews/](../../../lib/dev/design_previews/)（8案・`flutter run -t lib/main_design_preview.dart` でスワイプ比較・スモークテスト付き）。ユーザーレビューで案H採用（要件: 多彩色/押せる立体/ゲーム感ほどよく/学習感/細線/非パクリ）。

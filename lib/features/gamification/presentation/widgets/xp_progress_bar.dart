@@ -43,7 +43,7 @@ class XPProgressBar extends ConsumerWidget {
           color: (almost || fever)
               ? accent.withOpacity(0.5)
               : AppTheme.surfaceBorder,
-          width: (almost || fever) ? 1.5 : 1.0,
+          width: 1.5,
         ),
         boxShadow: fever
             ? [
@@ -212,7 +212,7 @@ class _Bar extends StatelessWidget {
               decoration: BoxDecoration(
                 color: fever
                     ? AppTheme.streakFire.withOpacity(0.15)
-                    : AppTheme.primaryLight,
+                    : AppTheme.track,
                 borderRadius: BorderRadius.circular(_height / 2),
               ),
             ),

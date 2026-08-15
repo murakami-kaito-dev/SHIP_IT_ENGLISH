@@ -108,7 +108,7 @@ class _QuizCardState extends State<QuizCard> {
       height: double.infinity,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Colors.white, Color(0xFFF7F8FE)],
+          colors: [Colors.white, Color(0xFFFDFBF4)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
