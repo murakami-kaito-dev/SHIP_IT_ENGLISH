@@ -16,8 +16,12 @@ import 'package:ship_it_english/features/gamification/presentation/widgets/level
 import 'package:ship_it_english/features/gamification/presentation/widgets/sparkle_burst.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_gain_popup.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
+import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
 import 'package:ship_it_english/features/gamification/providers/quests_providers.dart';
+import 'package:ship_it_english/features/study/domain/quiz.dart';
+import 'package:ship_it_english/features/study/presentation/widgets/quiz_card.dart';
+import 'package:ship_it_english/features/study/providers/quiz_providers.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
 import 'package:ship_it_english/features/study/domain/models/study_session.dart';
 import 'package:ship_it_english/features/study/presentation/widgets/flip_card.dart';
@@ -61,6 +65,9 @@ class StudyScreen extends ConsumerStatefulWidget {
 
 class _StudyScreenState extends ConsumerState<StudyScreen> {
   bool _loaded = false;
+
+  /// 出題形式の抽選シード。セッション中は固定（リビルドで形式が変わらない）。
+  final int _quizSeed = DateTime.now().millisecondsSinceEpoch;
 
   // === ゲーミフィケーション演出用の一時状態 ===
   /// 直近の評価結果（コンボ数・獲得XP・FEVER・レベルアップ判定）。
@@ -155,6 +162,14 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     if (ref.read(studySessionProvider).phase == StudyPhase.completed) {
       await _completeSession();
     }
+  }
+
+  /// クイズ形式（4択・音声・穴埋め）の回答を SRS 評価に変換する。
+  /// 正解=覚えてた / 不正解=忘れた（不正解カードは再出題され、flip形式で学び直す）。
+  /// rateCard は isFlipped を前提にするため、先に flipCard() で状態を揃える。
+  Future<void> _handleQuizAnswered(bool correct) async {
+    await ref.read(studySessionProvider.notifier).flipCard();
+    await _handleRating(correct ? Rating.remembered : Rating.forgot);
   }
 
   /// 評価結果に応じて音・振動・オーバーレイを発火する。
@@ -277,6 +292,25 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                   .projectedInterval(current: progress, rating: r),
           };
 
+    // 出題形式（flip=めくって自己評価 / choice・audio・cloze=クイズ）。
+    // 新規・再出題は必ず flip。復習カードはセッションシードで決定的に抽選。
+    // cloze は英語例文の穴埋めなので、enモード・フレーズが例文に無い場合は
+    // choice にフォールバックする。
+    var quizMode = QuizMode.flip;
+    final currentCard = state.currentCard;
+    if (currentCard != null) {
+      quizMode = quizModeFor(
+        cardId: currentCard.id,
+        isNewCard: state.newCardIds.contains(currentCard.id),
+        isRetry: (state.retryCount[currentCard.id] ?? 0) > 0,
+        sessionSeed: _quizSeed,
+      );
+      if (quizMode == QuizMode.cloze &&
+          (mode == LanguageMode.en || clozeExample(currentCard) == null)) {
+        quizMode = QuizMode.choice;
+      }
+    }
+
     // セッションに1枚もカードがない場合（カテゴリ学習で学習対象なし等）
     if (state.totalUniqueCount == 0 && state.phase == StudyPhase.studying) {
       return AppBackground(
@@ -390,18 +424,59 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                       padding: AppTheme.screenPadding,
                       child: Stack(
                         children: [
-                          SwipeCardWrapper(
-                            isFlipped: state.isFlipped,
-                            onSwipe: _handleRating,
-                            child: FlipCard(
-                              card: state.currentCard!,
+                          if (quizMode == QuizMode.flip)
+                            SwipeCardWrapper(
                               isFlipped: state.isFlipped,
-                              mode: mode,
-                              onFlip: () => ref
-                                  .read(studySessionProvider.notifier)
-                                  .flipCard(),
-                            ),
-                          ),
+                              onSwipe: _handleRating,
+                              child: FlipCard(
+                                card: state.currentCard!,
+                                isFlipped: state.isFlipped,
+                                mode: mode,
+                                onFlip: () => ref
+                                    .read(studySessionProvider.notifier)
+                                    .flipCard(),
+                              ),
+                            )
+                          else
+                            // クイズ形式（4択・音声・穴埋め）。誤答選択肢は同カテゴリ
+                            // から取得（カードごとに決定的＝リビルドで入れ替わらない）
+                            ref
+                                .watch(quizDistractorsProvider((
+                                  cardId: state.currentCard!.id,
+                                  category: state.currentCard!.category,
+                                )))
+                                .when(
+                                  loading: () => const Center(
+                                      child: CircularProgressIndicator()),
+                                  // 取得に失敗したら従来のフリップカードで出題を続行
+                                  error: (_, __) => SwipeCardWrapper(
+                                    isFlipped: state.isFlipped,
+                                    onSwipe: _handleRating,
+                                    child: FlipCard(
+                                      card: state.currentCard!,
+                                      isFlipped: state.isFlipped,
+                                      mode: mode,
+                                      onFlip: () => ref
+                                          .read(studySessionProvider.notifier)
+                                          .flipCard(),
+                                    ),
+                                  ),
+                                  data: (distractors) => QuizCard(
+                                    key: ValueKey(
+                                        'quiz-${state.currentCard!.id}'),
+                                    card: state.currentCard!,
+                                    question: buildQuizQuestion(
+                                      card: state.currentCard!,
+                                      distractors: distractors,
+                                      quizMode: quizMode,
+                                      languageMode: mode,
+                                      sessionSeed: _quizSeed,
+                                    ),
+                                    strings: strings,
+                                    mode: mode,
+                                    onAnswered: _handleQuizAnswered,
+                                  ),
+                                ),
                           // 正解時のスパークル（カード中心から弾ける）
                           if (_lastOutcome?.isCorrect ?? false)
                             Positioned.fill(
@@ -445,35 +520,39 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                   ),
                   SafeArea(
                     top: false,
-                    child: SizedBox(
-                      height: 96,
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        child: state.isFlipped
-                            ? Column(
-                                key: const ValueKey('rating'),
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    strings.swipeHint,
-                                    style: AppTheme.captionText,
-                                  ),
-                                  RatingButtons(
-                                    strings: strings,
-                                    onRate: _handleRating,
-                                    intervals: ratingIntervals,
-                                  ),
-                                ],
-                              )
-                            : Center(
-                                key: const ValueKey('hint'),
-                                child: Text(
-                                  strings.tapToFlip,
-                                  style: AppTheme.captionText,
-                                ),
-                              ),
-                      ),
-                    ),
+                    // クイズ形式は選択肢＋「つづける」がカード内にあるため、
+                    // 下部の評価ボタン/ヒントは flip 形式のときだけ出す。
+                    child: quizMode != QuizMode.flip
+                        ? const SizedBox(height: 12)
+                        : SizedBox(
+                            height: 96,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              child: state.isFlipped
+                                  ? Column(
+                                      key: const ValueKey('rating'),
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          strings.swipeHint,
+                                          style: AppTheme.captionText,
+                                        ),
+                                        RatingButtons(
+                                          strings: strings,
+                                          onRate: _handleRating,
+                                          intervals: ratingIntervals,
+                                        ),
+                                      ],
+                                    )
+                                  : Center(
+                                      key: const ValueKey('hint'),
+                                      child: Text(
+                                        strings.tapToFlip,
+                                        style: AppTheme.captionText,
+                                      ),
+                                    ),
+                            ),
+                          ),
                   ),
                 ],
                   ),

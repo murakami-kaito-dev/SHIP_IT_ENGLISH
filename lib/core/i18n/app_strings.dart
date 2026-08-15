@@ -455,6 +455,26 @@ class AppStrings {
     };
   }
 
+  // --- クイズ形式（4択・音声・穴埋め） ---
+  String get quizChoicePrompt =>
+      mode == LanguageMode.ja ? '正しい意味を選ぼう' : 'Choose the correct meaning';
+
+  String get quizAudioPrompt => mode == LanguageMode.ja
+      ? '音声を聴いて、意味を選ぼう'
+      : 'Listen and choose the meaning';
+
+  String get quizClozePrompt => mode == LanguageMode.ja
+      ? '空欄に入るフレーズを選ぼう'
+      : 'Which phrase fills the blank?';
+
+  String get quizCorrect => mode == LanguageMode.ja ? '正解！' : 'Correct!';
+
+  String get quizWrong =>
+      mode == LanguageMode.ja ? '残念、正解は…' : 'Not quite — the answer is…';
+
+  String get quizTapToReplay =>
+      mode == LanguageMode.ja ? 'タップでもう一度聴く' : 'Tap to replay';
+
   // --- デイリークエスト（日替わりのお題＋宝箱） ---
   String get dailyQuestsTitle =>
       mode == LanguageMode.ja ? '今日のクエスト' : "Today's Quests";
