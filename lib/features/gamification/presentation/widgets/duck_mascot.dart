@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 
 /// マスコットの機嫌（アニメーションの強さが変わる）。
 enum DuckMood {
@@ -23,7 +24,16 @@ class DuckMascot extends StatefulWidget {
   final double size;
   final DuckMood mood;
 
-  const DuckMascot({super.key, this.size = 44, this.mood = DuckMood.idle});
+  /// 称号ランク。上がるとダッキーの見た目が進化する（帽子→メガネ→
+  /// ヘッドホン→ネクタイ→王冠→王冠＋サングラス）。ドット絵の差分のみ。
+  final EngineerRank rank;
+
+  const DuckMascot({
+    super.key,
+    this.size = 44,
+    this.mood = DuckMood.idle,
+    this.rank = EngineerRank.intern,
+  });
 
   @override
   State<DuckMascot> createState() => _DuckMascotState();
@@ -80,15 +90,18 @@ class _DuckMascotState extends State<DuckMascot>
       },
       child: CustomPaint(
         size: Size.square(widget.size),
-        painter: const _DuckPainter(),
+        painter: _DuckPainter(rank: widget.rank),
       ),
     );
   }
 }
 
-/// ドット絵のラバーダック（16×14グリッド）。
+/// ドット絵のラバーダック（16×14グリッド）。称号ランクに応じた
+/// アクセサリー（進化差分）を上書きで描く。
 class _DuckPainter extends CustomPainter {
-  const _DuckPainter();
+  final EngineerRank rank;
+
+  const _DuckPainter({required this.rank});
 
   // '.'=透明 / Y=からだ / S=はねの影 / O=くちばし / K=目
   static const List<String> _pixels = [
@@ -112,6 +125,54 @@ class _DuckPainter extends CustomPainter {
   static const Color _shade = Color(0xFFF0B429);
   static const Color _beak = Color(0xFFFF8A3D);
   static const Color _eye = Color(0xFF2B2B33);
+  static const Color _blue = Color(0xFF1E88E5); // キャップ
+  static const Color _gray = Color(0xFF546E7A); // ヘッドホン
+  static const Color _red = Color(0xFFE53935); // ネクタイ
+  static const Color _gold = Color(0xFFFFC107); // 王冠
+  static const Color _white = Color(0xFFFFFFFF); // きらめき
+
+  /// ランクごとのアクセサリー（(row, col, color) の上書きピクセル）。
+  List<(int, int, Color)> get _accessory => switch (rank) {
+        EngineerRank.intern => const [],
+        // Junior: 青いキャップ（つばは くちばし側）
+        EngineerRank.junior => const [
+            (0, 6, _blue), (0, 7, _blue), (0, 8, _blue), (0, 9, _blue),
+            (1, 5, _blue), (1, 6, _blue), (1, 7, _blue), (1, 8, _blue),
+            (1, 9, _blue), (1, 10, _blue),
+            (2, 10, _blue), (2, 11, _blue), (2, 12, _blue),
+          ],
+        // Engineer: 四角いゴーグル眼鏡
+        EngineerRank.engineer => const [
+            (2, 4, _eye), (2, 5, _eye), (2, 6, _eye),
+            (3, 4, _eye), (3, 6, _eye),
+            (4, 4, _eye), (4, 5, _eye), (4, 6, _eye),
+          ],
+        // Senior: ヘッドホン（バンド＋両パッド）
+        EngineerRank.senior => const [
+            (0, 5, _gray), (0, 6, _gray), (0, 7, _gray), (0, 8, _gray),
+            (0, 9, _gray), (0, 10, _gray),
+            (1, 4, _gray), (2, 4, _gray), (3, 4, _gray),
+            (1, 11, _gray), (2, 11, _gray), (3, 11, _gray),
+          ],
+        // Staff: 赤いネクタイ
+        EngineerRank.staff => const [
+            (7, 7, _red), (8, 7, _red), (9, 7, _red), (10, 8, _red),
+          ],
+        // Principal: 金の王冠
+        EngineerRank.principal => const [
+            (0, 5, _gold), (0, 7, _gold), (0, 9, _gold),
+            (1, 5, _gold), (1, 6, _gold), (1, 7, _gold), (1, 8, _gold),
+            (1, 9, _gold),
+          ],
+        // Distinguished: 王冠＋サングラス＋きらめき
+        EngineerRank.distinguished => const [
+            (0, 5, _gold), (0, 7, _gold), (0, 9, _gold),
+            (1, 5, _gold), (1, 6, _gold), (1, 7, _gold), (1, 8, _gold),
+            (1, 9, _gold),
+            (3, 4, _eye), (3, 5, _eye), (3, 6, _eye), (3, 7, _eye),
+            (2, 13, _white), (5, 14, _white),
+          ],
+      };
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -140,8 +201,18 @@ class _DuckPainter extends CustomPainter {
         );
       }
     }
+
+    // ランクのアクセサリー（進化差分）を上書きで描く
+    for (final (r, c, color) in _accessory) {
+      paint.color = color;
+      canvas.drawRect(
+        Rect.fromLTWH(c * cell, top + r * cell, cell + 0.5, cell + 0.5),
+        paint,
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _DuckPainter oldDelegate) =>
+      oldDelegate.rank != rank;
 }

@@ -143,7 +143,12 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
                           color: Colors.white, size: 42),
                     ),
                     const SizedBox(width: 10),
-                    const DuckMascot(size: 52, mood: DuckMood.cheer),
+                    DuckMascot(
+                      size: 52,
+                      mood: DuckMood.cheer,
+                      rank: rankForLevel(
+                          ref.watch(gamificationProvider).snapshot.level),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),

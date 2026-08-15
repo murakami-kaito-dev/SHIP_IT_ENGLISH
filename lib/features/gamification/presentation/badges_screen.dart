@@ -5,6 +5,9 @@ import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/gamification/domain/badges.dart';
+import 'package:ship_it_english/features/gamification/domain/gamification.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/duck_mascot.dart';
+import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
 import 'package:ship_it_english/features/gamification/providers/badges_providers.dart';
 import 'package:ship_it_english/shared/widgets/app_background.dart';
 
@@ -38,7 +41,40 @@ class BadgesScreen extends ConsumerWidget {
             ],
           ),
         ),
-        body: GridView.builder(
+        body: Column(
+          children: [
+            // 現在の称号とダッキーの進化姿（レベルアップの意味づけを見せる場所）
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+              child: Consumer(builder: (context, ref, _) {
+                final level = ref.watch(gamificationProvider).snapshot.level;
+                final rank = rankForLevel(level);
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: AppTheme.cardDecoration,
+                  child: Row(
+                    children: [
+                      DuckMascot(size: 52, mood: DuckMood.happy, rank: rank),
+                      const SizedBox(width: 14),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            strings.rankName(rank),
+                            style: AppTheme.bodyText
+                                .copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          Text('LV $level', style: AppTheme.monoLabel),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ),
+            Expanded(
+              child: GridView.builder(
           padding: AppTheme.screenPadding,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
@@ -56,6 +92,9 @@ class BadgesScreen extends ConsumerWidget {
               mode: mode,
             );
           },
+              ),
+            ),
+          ],
         ),
       ),
     );

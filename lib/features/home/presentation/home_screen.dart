@@ -858,6 +858,8 @@ class _HomeDuck extends ConsumerWidget {
         child: DuckMascot(
           size: 40,
           mood: studiedToday ? DuckMood.happy : DuckMood.idle,
+          // 称号ランクに応じて見た目が進化する（レベルアップの意味づけ）
+          rank: rankForLevel(ref.watch(gamificationProvider).snapshot.level),
         ),
       ),
     );
