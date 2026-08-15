@@ -70,6 +70,8 @@ class AppConstants {
   // 起動時に自動消費したストリーク保護の枚数（ホームで一度だけ通知して0に戻す）。
   static const String keyStreakFreezeUsedPending = 'streak_freeze_used_pending';
   static const String keyStudyScope = 'study_scope';
+  // デイリークエストの進捗（日付付きJSON。日付が変わると自動リセット）。
+  static const String keyQuestProgress = 'daily_quest_progress';
   // 耳学（リスニング）の再生設定を記憶する。
   static const String keyListenSpeed = 'listen_speed';
   static const String keyListenRepeat = 'listen_repeat';

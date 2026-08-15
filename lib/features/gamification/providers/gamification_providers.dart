@@ -94,6 +94,26 @@ class GamificationNotifier extends StateNotifier<GamificationState> {
     return true;
   }
 
+  /// ボーナスXPを直接付与する（デイリークエストの宝箱など）。
+  /// 通常の評価XPと同じく通算XPに積み、レベルアップも起こり得る。
+  Future<void> grantBonusXp(int xp) async {
+    if (xp <= 0) return;
+    final newTotal = state.snapshot.totalXp + xp;
+    state = state.copyWith(snapshot: GamificationSnapshot.fromTotalXp(newTotal));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(AppConstants.keyTotalXp, newTotal);
+  }
+
+  /// ストリーク保護を無償で1つ付与する（宝箱のおまけ用。上限は交換と共通）。
+  Future<bool> grantStreakFreeze() async {
+    if (state.streakFreezes >= GamificationConfig.maxStreakFreezes) return false;
+    final newFreezes = state.streakFreezes + 1;
+    state = state.copyWith(streakFreezes: newFreezes);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(AppConstants.keyStreakFreezes, newFreezes);
+    return true;
+  }
+
   /// 起動時に StreakManager が保護を自動消費した後、最新値を prefs から読み直す。
   Future<void> refreshStreakFreezes() async {
     final prefs = await SharedPreferences.getInstance();

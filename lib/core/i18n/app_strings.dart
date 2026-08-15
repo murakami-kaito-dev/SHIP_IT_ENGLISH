@@ -1,4 +1,5 @@
 import 'package:ship_it_english/features/gamification/domain/gamification.dart';
+import 'package:ship_it_english/features/gamification/domain/quests.dart';
 
 /// UI表示言語モード。
 /// - [ja] 日本語話者向け: UIは日本語、英語フレーズを学習する（従来の動作）
@@ -453,6 +454,50 @@ class AppStrings {
       EngineerRank.distinguished => 'Distinguished Engineer',
     };
   }
+
+  // --- デイリークエスト（日替わりのお題＋宝箱） ---
+  String get dailyQuestsTitle =>
+      mode == LanguageMode.ja ? '今日のクエスト' : "Today's Quests";
+
+  /// クエストのお題文言（種類＋目標値から生成）。
+  String questTitle(Quest q) {
+    if (mode == LanguageMode.ja) {
+      return switch (q.type) {
+        QuestType.studyCards => 'カードを${q.target}枚学習する',
+        QuestType.comboReach => '${q.target}コンボを達成する',
+        QuestType.remembered => '「覚えてた」を${q.target}回出す',
+        QuestType.listenLines => '耳学で${q.target}クリップ聴く',
+      };
+    }
+    return switch (q.type) {
+      QuestType.studyCards => 'Study ${q.target} cards',
+      QuestType.comboReach => 'Reach a ${q.target} combo',
+      QuestType.remembered => 'Get ${q.target} "knew it" answers',
+      QuestType.listenLines => 'Listen to ${q.target} clips',
+    };
+  }
+
+  /// 宝箱の状態文言。
+  String get questChestLocked => mode == LanguageMode.ja
+      ? '3つすべて達成で宝箱が開く'
+      : 'Complete all 3 to open the chest';
+
+  String get questChestOpen =>
+      mode == LanguageMode.ja ? '宝箱を開ける' : 'Open the chest';
+
+  String questChestGained(int xp) =>
+      mode == LanguageMode.ja ? '+$xp XP 獲得！' : '+$xp XP earned!';
+
+  String get questChestFreezeBonus => mode == LanguageMode.ja
+      ? 'おまけ：ストリーク保護 +1 🛡️'
+      : 'Bonus: +1 Streak Freeze 🛡️';
+
+  String questChestClaimed(int xp) => mode == LanguageMode.ja
+      ? '今日の宝箱は受け取り済み（+$xp XP）'
+      : "Today's chest claimed (+$xp XP)";
+
+  String get questChestTitle =>
+      mode == LanguageMode.ja ? '宝箱ゲット！' : 'Chest unlocked!';
 
   // --- ストリーク保護（XPで交換する特典） ---
   String get streakShieldTitle =>

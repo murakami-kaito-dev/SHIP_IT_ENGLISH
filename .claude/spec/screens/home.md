@@ -18,9 +18,10 @@
    - **1日の新規カード数の設定はここには無い**（設定タブへ移動。[settings.md](settings.md)）。
    - **CTA もカード内下部**：`GradientButton`「学習を始める」→`/study`、🎛（範囲指定シート `showRangeStudySheet`）、「もう一度復習」→`/study?mode=practice`（practiceCardsCount>0時のみ活性）。
    - 全カードmastered時のみ、このカードの代わりに `_AllMasteredCard` を表示。
-3. **`_LevelCard`（経験値/レベル）**：`gamificationProvider.snapshot` を watch。通算XP（`totalXpValue`）＋ **称号ピル**（`rankName(rankForLevel(level))`）＋ `XPProgressBar`（LVバッジ＋ゲージ）＋ 次LVまでの残りXP（`xpToNext`）。**獲得経験値を確認できる常設の場所**。XPは起動時に `keyTotalXp` から復元される（[systems/gamification.md](../systems/gamification.md)）。
-4. **`_StreakShieldCard`（XPの使い道＝ストリーク保護）**：使えるXP（`availableXpLabel`）・所持盾（最大`maxStreakFreezes`）・交換ボタン（`buyStreakFreeze`・コスト`streakFreezeCost`）。起動時に保護が自動消費されていたら `_HomeScreenState` が SnackBar で一度だけ通知（`takeStreakFreezeUsedNotice`→`refreshStreakFreezes`）。※このため HomeScreen は `ConsumerStatefulWidget`。
-5. 週間サマリー棒グラフ、全体進捗バー（`studiedCount`基準）。
+3. **`DailyQuestsCard`（今日のクエスト＋宝箱）**：日替わり3件のお題（進捗バー＋x/y）と宝箱エリア。全達成で宝箱（XP30〜60＋10%で保護+1）。initState の `ensureToday()` で日付切替。詳細は [systems/gamification.md](../systems/gamification.md) の「デイリークエスト」。
+4. **`_LevelCard`（経験値/レベル）**：`gamificationProvider.snapshot` を watch。通算XP（`totalXpValue`）＋ **称号ピル**（`rankName(rankForLevel(level))`）＋ `XPProgressBar`（LVバッジ＋ゲージ）＋ 次LVまでの残りXP（`xpToNext`）。**獲得経験値を確認できる常設の場所**。XPは起動時に `keyTotalXp` から復元される（[systems/gamification.md](../systems/gamification.md)）。
+5. **`_StreakShieldCard`（XPの使い道＝ストリーク保護）**：使えるXP（`availableXpLabel`）・所持盾（最大`maxStreakFreezes`）・交換ボタン（`buyStreakFreeze`・コスト`streakFreezeCost`）。起動時に保護が自動消費されていたら `_HomeScreenState` が SnackBar で一度だけ通知（`takeStreakFreezeUsedNotice`→`refreshStreakFreezes`）。※このため HomeScreen は `ConsumerStatefulWidget`。
+6. 週間サマリー棒グラフ、全体進捗バー（`studiedCount`基準）。
 
 ## 重要な仕様
 - **今日の残り新規枠 = 1日の上限 − 今日学習した新規（daily_stats.new_cards）**。途中でやめて再開しても満タンに戻らない（0/40→3枚やって0/37）。日付が変わると上限にリセット。

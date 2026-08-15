@@ -14,7 +14,9 @@ import 'package:ship_it_english/shared/widgets/progress_bar.dart';
 import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/streak_widget.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/daily_quests_card.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
+import 'package:ship_it_english/features/gamification/providers/quests_providers.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -30,6 +32,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // 起動時にストリーク保護が自動消費されていたら一度だけ知らせる
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _showStreakFreezeNoticeIfAny());
+    // 日付が変わっていたら今日のクエストに切り替える（冪等）
+    WidgetsBinding.instance.addPostFrameCallback(
+        (_) => ref.read(dailyQuestsProvider.notifier).ensureToday());
   }
 
   Future<void> _showStreakFreezeNoticeIfAny() async {
@@ -109,6 +114,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     _buildSessionSection(context, ref, info, strings),
               ),
               const SizedBox(height: 24),
+              // 日替わりのお題＋宝箱（今日開く理由を作るデイリークエスト）
+              const DailyQuestsCard(),
+              const SizedBox(height: 16),
               // 通算で獲得した経験値（XP）とレベルを確認できるカード
               _LevelCard(strings: strings),
               const SizedBox(height: 16),

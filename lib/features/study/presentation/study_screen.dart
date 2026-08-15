@@ -17,6 +17,7 @@ import 'package:ship_it_english/features/gamification/presentation/widgets/spark
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_gain_popup.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
+import 'package:ship_it_english/features/gamification/providers/quests_providers.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
 import 'package:ship_it_english/features/study/domain/models/study_session.dart';
 import 'package:ship_it_english/features/study/presentation/widgets/flip_card.dart';
@@ -132,6 +133,11 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
         .read(gamificationProvider.notifier)
         .registerAnswer(rating: rating, firstTry: firstTry);
     _fireEffects(outcome);
+
+    // デイリークエストの進捗に反映（学習枚数・覚えてた回数・コンボ最大値）
+    await ref
+        .read(dailyQuestsProvider.notifier)
+        .recordAnswer(rating: rating, combo: outcome.combo);
 
     // レベルアップしたらモーダルで祝う（閉じるまで待ってから完了処理へ）
     if (outcome.leveledUp && mounted) {

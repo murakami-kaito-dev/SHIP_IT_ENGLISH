@@ -48,6 +48,16 @@
 - **直接 HapticFeedback を撒かず必ず SoundService 経由**。
 - SFXの音そのものを作り直す場合の合成レシピは開発メモに残す（`_render`＝基音＋オクターブ＋5度のベル風・指数減衰）。
 
+## デイリークエスト＋宝箱（[quests.dart](../../../lib/features/gamification/domain/quests.dart) / [quests_providers.dart](../../../lib/features/gamification/providers/quests_providers.dart) / [daily_quests_card.dart](../../../lib/features/gamification/presentation/widgets/daily_quests_card.dart)）
+- **目的**：日替わりのお題で「今日開く理由」を作る（アポイントメント機構＋可変報酬）。
+- **生成は決定的**：`questsForDate(date)` が日付シードの Random で毎日3件生成（**保存しない**。同日は常に同じお題）。1つ目は必ず `studyCards`（入口を低く）、残り2つは combo/remembered/listenLines から重複なしで抽選。目標値候補・宝箱報酬は `QuestConfig` に集約。
+- **進捗はカウンタのみ永続化**（`keyQuestProgress`・日付付きJSON）。日付が変わると `ensureToday()`（冪等）でリセット。採用されていない指標も常に記録する（どの組み合わせでも正しく進む）。
+  - 学習：study_screen `_handleRating` → `recordAnswer(rating, combo)`（枚数・覚えてた回数・コンボ最大値）。
+  - 耳学：`ListeningController(onLineCompleted:)` → `recordListenLine()`（**自然に聴き切った行のみ**。スキップ/停止は数えない）。
+- **宝箱（可変報酬）**：3件全達成で `claimChest()`（1日1回）。`rollChestReward` が XP 30〜60 を抽選＋10%でストリーク保護+1（所持上限未満のときだけ）。付与はUI側が `grantBonusXp` / `grantStreakFreeze`（無償・上限共通）で実施。演出は 🎁ダイアログ（elasticOut＋紙吹雪＋celebrate音）。
+- **UI**：Home のセッションカード直下 `DailyQuestsCard`（3行の進捗バー＋宝箱エリア：ロック文言→開けるボタン→受領済みチップ）。文言は `AppStrings.questTitle(quest)` 等（ja/en）。
+- テスト：[daily_quests_test.dart](../../../test/unit/daily_quests_test.dart)（決定性・重複なし・進捗記録・宝箱1回・日付切替・再起動復元）。
+
 ## 統合ポイント
 - Study：`_handleRating` で `registerAnswer`→エフェクト発火、レベルアップで `showLevelUpModal`。
 - SessionComplete：`ConfettiCelebration`＋`StreakWidget(large)`＋獲得XP＋`XPProgressBar`。

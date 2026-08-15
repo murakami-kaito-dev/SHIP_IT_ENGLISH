@@ -8,6 +8,7 @@ import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/core/providers/core_providers.dart';
 import 'package:ship_it_english/core/services/now_playing_service.dart';
 import 'package:ship_it_english/core/services/tts_service.dart';
+import 'package:ship_it_english/features/gamification/providers/quests_providers.dart';
 import 'package:ship_it_english/features/listening/domain/listening_state.dart';
 import 'package:ship_it_english/features/study/data/local_card_repository.dart';
 import 'package:ship_it_english/features/study/domain/models/card_model.dart';
@@ -64,12 +65,16 @@ const _cardGap = Duration(milliseconds: 800);
 class ListeningController extends StateNotifier<ListeningState> {
   final TtsService _tts;
 
+  /// クリップ（行）を1つ自然に聴き切るたびに呼ばれる（デイリークエスト集計用）。
+  final void Function()? onLineCompleted;
+
   /// 再生シーケンスの世代。停止/スキップ/並べ替えで無効化して古いループを止める。
   int _runToken = 0;
 
   final NowPlayingService _np = NowPlayingService.instance;
 
-  ListeningController(this._tts) : super(ListeningState.initial) {
+  ListeningController(this._tts, {this.onLineCompleted})
+      : super(ListeningState.initial) {
     _loadPrefs();
     // ロック画面/コントロールセンターからの操作を受ける
     _np.init();
@@ -228,6 +233,8 @@ class ListeningController extends StateNotifier<ListeningState> {
         await _tts.speakAndWait(lines[li].text, lines[li].locale,
             rate: state.speed);
         if (token != _runToken || !state.isPlaying) return;
+        // 自然に聴き切った（スキップ/停止で中断していない）行だけ集計する
+        onLineCompleted?.call();
         if (li < lines.length - 1) {
           await _gap(_lineGap, token);
           if (token != _runToken || !state.isPlaying) return;
@@ -278,5 +285,10 @@ class ListeningController extends StateNotifier<ListeningState> {
 
 final listeningControllerProvider = StateNotifierProvider.autoDispose<
     ListeningController, ListeningState>((ref) {
-  return ListeningController(TtsService());
+  return ListeningController(
+    TtsService(),
+    // 聴き切ったクリップ数をデイリークエスト（耳学クエスト）に反映する
+    onLineCompleted: () =>
+        ref.read(dailyQuestsProvider.notifier).recordListenLine(),
+  );
 });
