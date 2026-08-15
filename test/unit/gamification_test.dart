@@ -61,20 +61,23 @@ void main() {
   });
 
   group('EngineerRank（称号）', () {
-    test('レベルに応じて称号が上がる（帯の下限）', () {
+    test('レベルに応じて称号が上がる（帯の下限。長期目標として重めの閾値）', () {
       expect(rankForLevel(1), EngineerRank.intern);
-      expect(rankForLevel(2), EngineerRank.intern);
-      expect(rankForLevel(3), EngineerRank.junior);
-      expect(rankForLevel(5), EngineerRank.engineer);
-      expect(rankForLevel(8), EngineerRank.senior);
-      expect(rankForLevel(12), EngineerRank.staff);
-      expect(rankForLevel(17), EngineerRank.principal);
-      expect(rankForLevel(25), EngineerRank.distinguished);
+      expect(rankForLevel(4), EngineerRank.intern);
+      expect(rankForLevel(5), EngineerRank.junior);
+      expect(rankForLevel(10), EngineerRank.engineer);
+      expect(rankForLevel(16), EngineerRank.senior);
+      expect(rankForLevel(24), EngineerRank.staff);
+      expect(rankForLevel(34), EngineerRank.principal);
+      expect(rankForLevel(50), EngineerRank.distinguished);
+      // 閾値の直前では前の称号に留まる
+      expect(rankForLevel(9), EngineerRank.junior);
+      expect(rankForLevel(49), EngineerRank.principal);
     });
 
     test('レベルが上がると称号は後退しない（単調非減少）', () {
       var prev = -1;
-      for (var lv = 1; lv <= 40; lv++) {
+      for (var lv = 1; lv <= 60; lv++) {
         final idx = rankForLevel(lv).index;
         expect(idx, greaterThanOrEqualTo(prev));
         prev = idx;

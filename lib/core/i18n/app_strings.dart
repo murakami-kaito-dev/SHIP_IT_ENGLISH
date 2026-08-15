@@ -432,18 +432,9 @@ class AppStrings {
       : 'Answer cards correctly to earn XP and level up';
 
   /// レベル帯に対応する称号（キャリアラダー）。
+  /// **言語モードに関わらず英語表記で統一**（技術英語アプリとして、実際の
+  /// テック企業の職位名そのままの方が雰囲気が出るため。ユーザー指定）。
   String rankName(EngineerRank rank) {
-    if (mode == LanguageMode.ja) {
-      return switch (rank) {
-        EngineerRank.intern => 'インターン',
-        EngineerRank.junior => 'ジュニアエンジニア',
-        EngineerRank.engineer => 'エンジニア',
-        EngineerRank.senior => 'シニアエンジニア',
-        EngineerRank.staff => 'スタッフエンジニア',
-        EngineerRank.principal => 'プリンシパルエンジニア',
-        EngineerRank.distinguished => 'ディスティングイッシュト',
-      };
-    }
     return switch (rank) {
       EngineerRank.intern => 'Intern',
       EngineerRank.junior => 'Junior Engineer',

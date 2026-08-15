@@ -14,7 +14,7 @@
 - チューニングは **`GamificationConfig` 定数のみ**（XP量・閾値・倍率・`dailyGoalCards=20`・`streakFreezeCost=200`・`maxStreakFreezes=3`）。
 
 ## 称号（レベルの意味づけ・[gamification.dart](../../../lib/features/gamification/domain/gamification.dart)）
-- `EngineerRank`（intern→junior→engineer→senior→staff→principal→distinguished）。`rankForLevel(level)` が帯の下限で判定（3/5/8/12/17/25）。
+- `EngineerRank`（Intern→Junior→Engineer→Senior→Staff→Principal→Distinguished）。`rankForLevel(level)` が帯の下限で判定（**5/10/16/24/34/50**。レベル=頻繁な短期達成感/称号=長期目標の二層。以前の 3/5/8/12/17/25 は「シニア4日・最高1ヶ月」で軽すぎた）。**表示は言語モードに関わらず英語**（`rankName`・ユーザー指定）。
 - 表示名は言語モード別に `AppStrings.rankName(rank)`（UI文言はハードコード禁止の方針に従い app_strings に集約。app_strings が gamification 定義を import）。
 - 出す場所：Home `_LevelCard`（称号ピル）＋ `showLevelUpModal`（レベルバッジ下に称号）。
 

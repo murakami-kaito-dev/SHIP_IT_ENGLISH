@@ -44,13 +44,17 @@ enum EngineerRank {
 }
 
 /// レベル [level] から称号を求める（各帯の下限レベル）。
+///
+/// 閾値はレベルカーブより意図的に重くしてある（レベル=頻繁に上がる短期の達成感、
+/// 称号=数週間〜数ヶ月の長期目標、の二層構造）。以前は 3/5/8/12/17/25 で
+/// 「シニアが4日・最高称号が1ヶ月」と軽すぎたため引き上げた。
 EngineerRank rankForLevel(int level) {
-  if (level >= 25) return EngineerRank.distinguished;
-  if (level >= 17) return EngineerRank.principal;
-  if (level >= 12) return EngineerRank.staff;
-  if (level >= 8) return EngineerRank.senior;
-  if (level >= 5) return EngineerRank.engineer;
-  if (level >= 3) return EngineerRank.junior;
+  if (level >= 50) return EngineerRank.distinguished;
+  if (level >= 34) return EngineerRank.principal;
+  if (level >= 24) return EngineerRank.staff;
+  if (level >= 16) return EngineerRank.senior;
+  if (level >= 10) return EngineerRank.engineer;
+  if (level >= 5) return EngineerRank.junior;
   return EngineerRank.intern;
 }
 
