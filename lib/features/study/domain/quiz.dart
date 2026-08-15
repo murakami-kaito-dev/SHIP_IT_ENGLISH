@@ -57,6 +57,14 @@ QuizMode quizModeFor({
   return QuizMode.cloze;
 }
 
+/// ユニットテスト（卒業テスト）用の出題形式。**flip は出さず必ずクイズ**
+/// （客観テストで合否を判定するため）。抽選はセッション内決定的。
+QuizMode unitTestModeFor({required String cardId, required int sessionSeed}) {
+  const modes = [QuizMode.choice, QuizMode.audio, QuizMode.cloze];
+  return modes[Random(sessionSeed ^ cardId.hashCode ^ 0x5eed)
+      .nextInt(modes.length)];
+}
+
 /// 例文からフレーズを空欄化したテキストを返す。
 /// フレーズが例文に（大文字小文字を無視して）現れない場合は null
 /// （呼び出し側は choice にフォールバックする）。

@@ -50,6 +50,10 @@ class StudySessionState {
   /// するか」を表示するために使う。カードをめくったときに読み込む。
   final LearningProgress? currentProgress;
 
+  /// ユニットテスト（卒業テスト）モード。true のとき「忘れた」でも
+  /// 再出題しない（1周で終えてミス数を数え、合否を判定する）。
+  final bool unitTest;
+
   const StudySessionState({
     required this.queue,
     required this.currentCard,
@@ -62,6 +66,7 @@ class StudySessionState {
     required this.newCardIds,
     required this.reviewCardIds,
     this.currentProgress,
+    this.unitTest = false,
   });
 
   /// currentCard を「変更なし」と「null にする」で区別するためのセンチネル。
@@ -80,6 +85,7 @@ class StudySessionState {
     Set<String>? newCardIds,
     Set<String>? reviewCardIds,
     Object? currentProgress = _keep,
+    bool? unitTest,
   }) {
     return StudySessionState(
       queue: queue ?? this.queue,
@@ -97,6 +103,7 @@ class StudySessionState {
       currentProgress: identical(currentProgress, _keep)
           ? this.currentProgress
           : currentProgress as LearningProgress?,
+      unitTest: unitTest ?? this.unitTest,
     );
   }
 }
@@ -169,6 +176,7 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
       phase: StudyPhase.studying,
       newCardIds: newCardIds,
       reviewCardIds: reviewCardIds,
+      unitTest: false,
     );
   }
 
@@ -199,6 +207,7 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
       phase: StudyPhase.studying,
       newCardIds: {},
       reviewCardIds: cards.map((c) => c.id).toSet(),
+      unitTest: false,
     );
   }
 
@@ -235,6 +244,41 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
       phase: StudyPhase.studying,
       newCardIds: {},
       reviewCardIds: cards.map((c) => c.id).toSet(),
+      unitTest: false,
+    );
+  }
+
+  /// ユニットテスト（卒業テスト）セッション。
+  /// カテゴリ内の通し番号 [from]〜[to] の全カードをランダム順に**1周だけ**出題する
+  /// （「忘れた」でも再出題しない）。評価は通常どおりSRSに反映される。
+  Future<void> loadUnitTestSession({
+    required String categoryId,
+    required int from,
+    required int to,
+  }) async {
+    final repo = _repo;
+    if (repo is! LocalCardRepository) return;
+
+    final cards = await repo.getCategoryStudyCards(
+      categoryId: categoryId,
+      from: from,
+      to: to,
+      statuses: const {},
+      random: true,
+    );
+
+    state = state.copyWith(
+      queue: cards,
+      currentCard: cards.isNotEmpty ? cards.first : null,
+      totalUniqueCount: cards.length,
+      completedUniqueCount: 0,
+      isFlipped: false,
+      session: StudySession(startedAt: DateTime.now()),
+      retryCount: {},
+      phase: StudyPhase.studying,
+      newCardIds: {},
+      reviewCardIds: cards.map((c) => c.id).toSet(),
+      unitTest: true,
     );
   }
 
@@ -274,8 +318,9 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
     final newQueue = List<TechCard>.from(state.queue.skip(1));
     final newRetryCount = Map<String, int>.from(state.retryCount);
 
-    // 「忘れた」の場合: キュー末尾に再追加（上限2回まで）
-    if (rating == Rating.forgot) {
+    // 「忘れた」の場合: キュー末尾に再追加（上限2回まで）。
+    // ユニットテストは1周で合否を判定するため再出題しない。
+    if (rating == Rating.forgot && !state.unitTest) {
       final currentRetries = newRetryCount[card.id] ?? 0;
       if (currentRetries < AppConstants.maxRetriesPerSession) {
         newQueue.add(card);

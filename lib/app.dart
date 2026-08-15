@@ -62,6 +62,9 @@ GoRouter createRouter({required bool showOnboarding}) {
                 ? const {}
                 : statusesCsv.split(',').toSet(),
             random: q['order'] == 'random',
+            // ユニットテスト（卒業テスト）: /study?category=X&from=A&to=B&mode=unit&unit=N
+            unitTest: q['mode'] == 'unit',
+            unitIndex: int.tryParse(q['unit'] ?? ''),
           );
         },
       ),

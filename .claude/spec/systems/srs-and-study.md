@@ -29,3 +29,11 @@
 
 ## テスト
 `test/unit/{srs_engine,daily_set,study_session,streak}_test.dart`。SRSの間隔/mastered/forgotステップ・セッション完了・コンボ前提などを固定。
+
+## ユニット制＋卒業テスト（[domain/units.dart](../../../lib/features/study/domain/units.dart) / [units_providers.dart](../../../lib/features/study/providers/units_providers.dart)）
+- **目的**：終わりのないSRSと並走する「終わりのある道」。カテゴリを `UnitConfig.unitSize=20` 枚ごとのユニットに分割（`unitsForCount`。端数は最後のユニット）。
+- **卒業テスト**：`/study?category=X&from=A&to=B&mode=unit&unit=N` → `loadUnitTestSession`（範囲全カード・ランダム順・**1周のみ＝忘れたでも再出題しない**（`StudySessionState.unitTest`）・評価は通常どおりSRSに反映）。
+- **出題は必ずクイズ**（`unitTestModeFor`＝choice/audio/cloze。flipなし）。
+- **合否**：ミス（forgot）が `maxMistakes=2` 以下でクリア（`unitTestPassed`）。クリア→`clearedUnitsProvider.markCleared`（prefs `keyClearedUnits`・`categoryId:unitIndex`）＋ボーナスXP `clearXp=50`＋🏆ダイアログ（紙吹雪）→カテゴリへ。不合格→「あと少し」ダイアログ（再挑戦 or 戻る。再挑戦は `_retryUnitTest` で同ユニットを読み直し）。
+- **UI**：カテゴリ詳細の先頭 `_UnitsSection`（横スクロールのユニットタイル：番号・#範囲・学習x/y・挑戦ボタン/クリアバッジ🏆・クリア数 n/m）。
+- テスト：[units_test.dart](../../../test/unit/units_test.dart)（分割・被覆・合否・形式・クリア永続化）。

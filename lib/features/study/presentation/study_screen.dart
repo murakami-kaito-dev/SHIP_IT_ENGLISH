@@ -19,9 +19,13 @@ import 'package:ship_it_english/features/gamification/presentation/widgets/xp_pr
 import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
 import 'package:ship_it_english/features/gamification/providers/quests_providers.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/confetti_celebration.dart';
 import 'package:ship_it_english/features/study/domain/quiz.dart';
+import 'package:ship_it_english/features/study/domain/units.dart';
 import 'package:ship_it_english/features/study/presentation/widgets/quiz_card.dart';
 import 'package:ship_it_english/features/study/providers/quiz_providers.dart';
+import 'package:ship_it_english/features/study/providers/units_providers.dart';
+import 'package:ship_it_english/shared/widgets/gradient_button.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
 import 'package:ship_it_english/features/study/domain/models/study_session.dart';
 import 'package:ship_it_english/features/study/presentation/widgets/flip_card.dart';
@@ -49,6 +53,13 @@ class StudyScreen extends ConsumerStatefulWidget {
   /// true でランダム順、false で番号の若い順
   final bool random;
 
+  /// ユニットテスト（卒業テスト）。categoryId + rangeFrom/To のユニットを
+  /// クイズのみ1周で出題し、ミス数で合否を判定する
+  final bool unitTest;
+
+  /// ユニット番号（クリア記録・表示用。unitTest のとき必須）
+  final int? unitIndex;
+
   const StudyScreen({
     super.key,
     this.categoryId,
@@ -57,6 +68,8 @@ class StudyScreen extends ConsumerStatefulWidget {
     this.rangeTo,
     this.statuses = const {},
     this.random = false,
+    this.unitTest = false,
+    this.unitIndex,
   });
 
   @override
@@ -87,7 +100,16 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
       final allowed = isPro ? null : MonetizationConfig.freeCategoryIds;
       final notifier = ref.read(studySessionProvider.notifier);
 
-      if (widget.rangeFrom != null &&
+      if (widget.unitTest &&
+          widget.rangeFrom != null &&
+          widget.rangeTo != null &&
+          widget.categoryId != null) {
+        await notifier.loadUnitTestSession(
+          categoryId: widget.categoryId!,
+          from: widget.rangeFrom!,
+          to: widget.rangeTo!,
+        );
+      } else if (widget.rangeFrom != null &&
           widget.rangeTo != null &&
           widget.categoryId != null) {
         await notifier.loadCategoryStudySession(
@@ -211,8 +233,169 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
       }
     }
     if (!mounted) return;
+
+    // ユニットテストは完了画面ではなく合否（クリア/再挑戦）を出す
+    if (widget.unitTest) {
+      await _finishUnitTest();
+      return;
+    }
+
     ref.read(lastSessionResultProvider.notifier).state = result;
     context.go('/session-complete');
+  }
+
+  /// ユニットテストの合否判定と後処理。
+  /// ミス（忘れた）が許容数以下ならクリア：記録＋ボーナスXP＋祝いダイアログ。
+  /// 超えたら「あと少し」ダイアログで再挑戦かカテゴリへ戻るかを選ばせる。
+  Future<void> _finishUnitTest() async {
+    final session = ref.read(studySessionProvider).session;
+    final mistakes =
+        session.results.where((r) => r.rating == Rating.forgot).length;
+    final passed = unitTestPassed(mistakes);
+    final strings = ref.read(stringsProvider);
+    final categoryId = widget.categoryId!;
+    final unitIndex = widget.unitIndex ?? 0;
+
+    invalidateProgressProviders(ref);
+
+    if (passed) {
+      await ref
+          .read(clearedUnitsProvider.notifier)
+          .markCleared(categoryId, unitIndex);
+      await ref
+          .read(gamificationProvider.notifier)
+          .grantBonusXp(UnitConfig.clearXp);
+      if (!mounted) return;
+      SoundService.instance.celebrate();
+      await _showUnitResultDialog(
+          passed: true, mistakes: mistakes, strings: strings);
+      if (mounted) context.go('/category/$categoryId');
+      return;
+    }
+
+    if (!mounted) return;
+    final retry = await _showUnitResultDialog(
+        passed: false, mistakes: mistakes, strings: strings);
+    if (!mounted) return;
+    if (retry == true) {
+      await _retryUnitTest();
+    } else {
+      context.go('/category/$categoryId');
+    }
+  }
+
+  /// 不合格からの再挑戦（同じユニットを読み込み直す）。
+  Future<void> _retryUnitTest() async {
+    setState(() {
+      _loaded = false;
+      _lastOutcome = null;
+    });
+    _completing = false;
+    await ref.read(studySessionProvider.notifier).loadUnitTestSession(
+          categoryId: widget.categoryId!,
+          from: widget.rangeFrom!,
+          to: widget.rangeTo!,
+        );
+    ref.read(gamificationProvider.notifier).startSession();
+    if (mounted) setState(() => _loaded = true);
+  }
+
+  /// 合否ダイアログ。クリア時は紙吹雪つき。不合格時は true=再挑戦を返す。
+  Future<bool?> _showUnitResultDialog({
+    required bool passed,
+    required int mistakes,
+    required AppStrings strings,
+  }) {
+    final unitIndex = widget.unitIndex ?? 0;
+    return showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'unit-result',
+      barrierColor: Colors.black45,
+      transitionDuration: const Duration(milliseconds: 420),
+      pageBuilder: (context, _, __) => const SizedBox.shrink(),
+      transitionBuilder: (context, animation, _, __) {
+        final scale = CurvedAnimation(
+          parent: animation,
+          curve: Curves.elasticOut,
+          reverseCurve: Curves.easeIn,
+        );
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            if (passed)
+              const Positioned.fill(
+                child: IgnorePointer(child: ConfettiCelebration()),
+              ),
+            ScaleTransition(
+              scale: scale,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: AppTheme.heroShadow,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(passed ? '🏆' : '💪',
+                          style: const TextStyle(fontSize: 56)),
+                      const SizedBox(height: 12),
+                      Text(
+                        passed
+                            ? strings.unitClearTitle(unitIndex)
+                            : strings.unitFailTitle,
+                        textAlign: TextAlign.center,
+                        style: AppTheme.bodyText.copyWith(
+                            fontWeight: FontWeight.w800, fontSize: 18),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        passed
+                            ? strings.unitClearBonus(UnitConfig.clearXp)
+                            : strings.unitFailBody(
+                                mistakes, UnitConfig.maxMistakes),
+                        textAlign: TextAlign.center,
+                        style: passed
+                            ? AppTheme.monoNumberLarge
+                                .copyWith(color: AppTheme.primary)
+                            : AppTheme.captionText,
+                      ),
+                      const SizedBox(height: 18),
+                      if (passed)
+                        GradientButton(
+                          label: strings.continueButton,
+                          onPressed: () =>
+                              Navigator.of(context).pop(true),
+                        )
+                      else ...[
+                        GradientButton(
+                          label: strings.unitRetry,
+                          icon: Icons.replay_rounded,
+                          onPressed: () =>
+                              Navigator.of(context).pop(true),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () =>
+                              Navigator.of(context).pop(false),
+                          child: Text(strings.unitBackToCategory,
+                              style: AppTheme.captionText),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   bool _exiting = false;
@@ -299,12 +482,15 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     var quizMode = QuizMode.flip;
     final currentCard = state.currentCard;
     if (currentCard != null) {
-      quizMode = quizModeFor(
-        cardId: currentCard.id,
-        isNewCard: state.newCardIds.contains(currentCard.id),
-        isRetry: (state.retryCount[currentCard.id] ?? 0) > 0,
-        sessionSeed: _quizSeed,
-      );
+      // ユニットテストは flip を出さず必ずクイズ（客観テストで合否判定）
+      quizMode = widget.unitTest
+          ? unitTestModeFor(cardId: currentCard.id, sessionSeed: _quizSeed)
+          : quizModeFor(
+              cardId: currentCard.id,
+              isNewCard: state.newCardIds.contains(currentCard.id),
+              isRetry: (state.retryCount[currentCard.id] ?? 0) > 0,
+              sessionSeed: _quizSeed,
+            );
       if (quizMode == QuizMode.cloze &&
           (mode == LanguageMode.en || clozeExample(currentCard) == null)) {
         quizMode = QuizMode.choice;

@@ -455,6 +455,41 @@ class AppStrings {
     };
   }
 
+  // --- ユニット制（約20枚ごとの関門＋卒業テスト） ---
+  String get unitsSectionTitle => mode == LanguageMode.ja ? 'ユニット' : 'Units';
+
+  String unitLabel(int index) =>
+      mode == LanguageMode.ja ? 'ユニット $index' : 'Unit $index';
+
+  String unitRangeLabel(int from, int to) => '#$from–#$to';
+
+  String get unitTestButton => mode == LanguageMode.ja ? '挑戦' : 'Test';
+
+  String get unitClearedChip => mode == LanguageMode.ja ? 'クリア' : 'Clear';
+
+  String unitStudiedOf(int studied, int total) => mode == LanguageMode.ja
+      ? '学習 $studied/$total'
+      : 'Studied $studied/$total';
+
+  String unitClearTitle(int index) => mode == LanguageMode.ja
+      ? 'ユニット $index クリア！'
+      : 'Unit $index clear!';
+
+  String unitClearBonus(int xp) =>
+      mode == LanguageMode.ja ? 'ボーナス +$xp XP' : 'Bonus +$xp XP';
+
+  String get unitFailTitle => mode == LanguageMode.ja ? 'あと少し！' : 'Almost!';
+
+  String unitFailBody(int mistakes, int allowed) => mode == LanguageMode.ja
+      ? 'ミス $mistakes 回でした（クリアは $allowed 回まで）。\nもう一度挑戦してみよう'
+      : '$mistakes mistakes (up to $allowed allowed to clear).\nGive it another try!';
+
+  String get unitRetry =>
+      mode == LanguageMode.ja ? 'もう一度挑戦' : 'Try again';
+
+  String get unitBackToCategory =>
+      mode == LanguageMode.ja ? 'カテゴリに戻る' : 'Back to category';
+
   // --- クイズ形式（4択・音声・穴埋め） ---
   String get quizChoicePrompt =>
       mode == LanguageMode.ja ? '正しい意味を選ぼう' : 'Choose the correct meaning';

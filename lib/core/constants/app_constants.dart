@@ -72,6 +72,8 @@ class AppConstants {
   static const String keyStudyScope = 'study_scope';
   // デイリークエストの進捗（日付付きJSON。日付が変わると自動リセット）。
   static const String keyQuestProgress = 'daily_quest_progress';
+  // クリア済みユニット（'categoryId:unitIndex' の文字列リスト）。
+  static const String keyClearedUnits = 'cleared_units';
   // 耳学（リスニング）の再生設定を記憶する。
   static const String keyListenSpeed = 'listen_speed';
   static const String keyListenRepeat = 'listen_repeat';
