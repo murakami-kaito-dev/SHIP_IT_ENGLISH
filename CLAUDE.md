@@ -2,6 +2,17 @@
 
 Claude Code がこのプロジェクトを触る際に必ず参照するコンテキスト。
 
+## 情報のありか（新規セッションの初動でまず把握する地図）
+
+このプロジェクトの全体像は下記を辿れば掴める（＝新規参画時に見る順番）:
+- **このファイル `CLAUDE.md`** … 固有ルール・不変条件・禁忌・コーディング規約
+- **仕様（正）** [.claude/spec/README.md](.claude/spec/README.md) … 画面別・システム別の最新仕様（**コードを読む前にここ**。仕様駆動開発）
+- **リリース履歴** [.claude/docs/release-log.md](.claude/docs/release-log.md) … どのビルドで何を出したか・配信状態
+- **ドキュメント索引** [docs/README.md](docs/README.md) … ビルド/申請/音声生成 等の人間向け操作手順
+- **`.claude/rules/`** … パス限定で常時効くルール（例 [.claude/rules/flutter-conventions.md](.claude/rules/flutter-conventions.md)＝`lib/**/*.dart` の Flutter 規約）／**プロジェクト Skill** [.claude/skills/ios-app-release-local](.claude/skills/ios-app-release-local/SKILL.md)（このアプリの App Store 固有値。手順はグローバル `ios-app-release`）
+- **自動メモリ** `~/.claude/projects/<repo>/memory/`（索引 `MEMORY.md`）… これまでの経緯・決定・学び
+- **共通ルール（Git・秘密・タグ・記録・越境禁止）は グローバル [`~/.claude/CLAUDE.md`](~/.claude/CLAUDE.md) と各 Skill** を参照（`git-workflow` / `ios-app-release` / `release-log` / `project-hygiene`）
+
 ---
 
 ## プロジェクト概要
@@ -225,38 +236,21 @@ test/
 
 ## コーディング上の注意事項
 
-- **`Color.withValues(alpha:)` は使わない** → Flutter 3.24では未定義。`withOpacity()` を使う
-- **`riverpod_generator` / `build_runner` は導入済みだがコード生成は使っていない**（手動プロバイダーで統一）
-- **`AppBar.actions` に幅が不定のWidgetを置かない**（LinearProgressIndicator など）
+> **`lib/**/*.dart` のコード規約は [.claude/rules/flutter-conventions.md](.claude/rules/flutter-conventions.md) に移設した**
+> （`lib/**/*.dart` 編集時にパス限定で常時適用）。移設分＝`withOpacity`／手動プロバイダー／`FractionallySizedBox` の
+> `heightFactor`／`invalidateProgressProviders`／`Rating` vs `CardStatus`／`SrsEngine.projectedInterval`／通知トグルの整合／
+> 課金（Pro・エンタイトルメント）／ゲーミフィケーション／Now Playing／ちらつき対策 等。
+> ここには**カード追加・音声生成・リリース同期などのプロセス/データ運用の手順系**だけを残す。
+> 秘密ファイルの扱いは上の「Git / 秘密（運用ルール）」節を参照。
+
 - **カードのseed投入**: `seed_data.dart` が `seed_version` と JSON の `version` を比較して差分のみ投入する。バージョンを上げないと再投入されない。**JSONから削除したカードはDBからも自動削除される**（cards.jsonが唯一の正）
 - **`AppConstants.appVersion` は `pubspec.yaml` の version と手動同期**（設定画面フッターに表示）
-- **通知はトグルの表示と実挙動を必ず一致させる**。①アプリ内トグルをオフにしたら、既にOSへ積んだ予約も消す（`scheduleStreakReminders()` は7日分を先に積むため、止めるだけでは最長7日鳴り続ける）②OSの通知許可がオフのときはトグルを「オン」と表示しない（`notificationPermissionProvider` で非活性化＋バナー）。**通知欄ごと隠さない**（「通知機能が無い」と誤解されるため）③許可はアプリ外で変わるので `resumed` のたびに読み直し、復帰時は `rescheduleAll()` で予約を組み直す（許可が無い間の `zonedSchedule` は黙って捨てられる）
-- **`FractionallySizedBox` で `widthFactor` だけを指定しない**。高さの制約が緩いまま渡り、子を持たない `DecoratedBox` / `Container` は**高さ0に潰れて1pxも描画されない**。必ず `heightFactor: 1.0` も付ける。XPゲージがどれだけ溜まっても空のままだった実績あり（`test/unit/xp_progress_bar_test.dart` で恒久ガード）
-- **学習画面に同じ形の横棒を2本並べない**。セッション進捗＝AppBar直下の全幅ヘアライン（線）、XP＝カード上の部品（面）と形を分ける。進捗の数字には必ず単位（枚 / XP）を付ける
-- **時刻の選択に `showTimePicker`（Materialのアナログ文字盤）を使わない** → 24時間制だと内周・外周に数字が二重に並び読み取りにくい。`shared/widgets/wheel_time_picker.dart` の `showWheelTimePicker` を使う。「時」「分」は数字に付けず列見出しに置く（英語モードで "08Hour" になるため）
-- **実行時のネットワーク通信を伴う機能の追加は要確認**（App Storeの「データ収集なし」申告が崩れるため）
-- **UI文言はハードコード禁止**: `core/i18n/app_strings.dart` に ja/en 両方を定義し、`stringsProvider` 経由で取得する
-- **Pro判定は `isProProvider` 経由のみ**（サブスク無効時は常にtrue）。無料/Proの線引きは `MonetizationConfig` だけで変更する
-- **権利は `setPro(true)` して終わりにしない**。解約・返金を反映するため `EntitlementNotifier.verify()` が起動時／フォアグラウンド復帰時に再検証する（間隔・猶予期間は `MonetizationConfig`）
-- **バックアップのフォーマットを変えたら `BackupService._formatVersion` を上げる**（上げないと古いアプリが新しいファイルを中途半端に読み込む）
-- **学習進捗を変更したら `invalidateProgressProviders(ref)` を呼ぶ**（`core/providers/progress_refresh.dart`）。ホーム・カテゴリのFutureProviderはキャッシュするため、これを忘れると古い集計が表示される
-- **カードの学習状況の表示は `Rating`（忘れた/曖昧/覚えてた、未評価はnull=未学習）で統一**。`CardStatus`（new/learning/review/mastered）はSRS内部状態であり画面には出さない
-- **「忘れた」の次回復習は当日中の短い再学習ステップ**（`relearnStepMinutes = 10`分後）。以前は `next_review = now`（即時）だったが、エビングハウス基準で数十分後に変更。ただし `intervalDays` は 0 のまま（＝graduated扱いしない）。セッション内の即時再出題は `retryCount` 側で別管理なので影響なし
-- **評価ボタンの次回間隔は必ず `SrsEngine.projectedInterval()` を使う**（表示と実際の `processReview` 結果が一致する。独自計算で二重管理しない）
 - **カード番号はカテゴリごとの通し番号**（`cards.card_number`）。シード時に cards.json の並び順で1から採番するため、**カードの順序を入れ替えると番号が変わる**（追加は末尾に）
-- **進捗表示は `studiedCount`（status != 'new'）を使う**。`mastered` は21日間隔到達が条件で数週間かかるため、これを主指標にすると「学習しても0のまま」になる
 - **カードに新フィールドを足すとき**: cards.json + `card_model.dart` + `seed_data.dart` + `database_helper.dart`（DBバージョン++とマイグレーション）の4点セット。翻訳が必要なら `dart_defines.json` の GEMINI_API_KEY で開発時に一括生成（実行時API呼び出しはしない）
 - **発音音声は「開発時に OpenAI TTS(nova) で一括生成→同梱、実行時は再生のみ（非通信）」・英語/日本語の2ロケール**。`speakTarget` は対象ロケール（ja→en-US / en→ja-JP）で同梱クリップがあれば `AudioClipService.playIfAvailable(text, locale)` で再生、無ければ `flutter_tts` にフォールバック。生成は `dart run tools/generate_tts.dart --locale <en-US|ja-JP> --generate`（差分生成・要 `OPENAI_API_KEY`）。OpenAIからWAV取得→`afconvert`でAAC(.m4a)化。ファイル名は `sha1(trimしたテキスト)`.m4a。en-US=3826件/約124MB・ja-JP=3822件/約158MB 同梱済み。カード追加時は両ロケール差分生成してコミット（手順は `docs/tts_audio_generation.md`）
-- **ゲーミフィケーションのXP/コンボ判定は `gamificationProvider` に集約**。study_screen は `registerAnswer(rating, firstTry)` を呼んで返る `AnswerOutcome`（combo/xpGained/fever/leveledUp）でエフェクトを発火するだけ。XP量・コンボ閾値・FEVER倍率・デイリー目標は `GamificationConfig` の定数のみで調整する
-- **XP総量だけを永続化**（`keyTotalXp`）。レベルとレベル内進捗は `GamificationSnapshot.fromTotalXp()` で都度算出（別々に保存しない）。コンボ・セッションXPはセッション内の一時状態で永続化しない（`startSession()` でリセット）
-- **効果音/振動は必ず `SoundService` 経由**（直接 HapticFeedback を撒かない）。実SFXを足すときは `_sfx()` をローカルアセット再生に差し替える（ネットワーク非通信・データ収集なしの方針を維持）
-- **`dart_defines.json` は秘密（GEMINI_API_KEY）を含むため `.gitignore` 済み**。コミット/Pushに含めない
+- **バックアップのフォーマットを変えたら `BackupService._formatVersion` を上げる**（上げないと古いアプリが新しいファイルを中途半端に読み込む）
 - **`file_picker` を使うので `NSPhotoLibraryUsageDescription` が必須**（`ios/Runner/Info.plist`）。写真は実際には使わないが、file_pickerが写真ライブラリAPIを参照するため用途文字列が無いと **ITMS-90683 でアップロードが弾かれる**（実機に届く前の自動処理で失敗しメール通知）。写真は収集しない旨を文字列に明記済み。**data収集なし申告とは矛盾しない**（用途文字列＝端末機能の許可であり、App Privacyのデータ収集宣言とは別物）。
-- **iOSのバックグラウンド/ロック画面再生（Now Playing）は `mixWithOthers` を付けない**。付けると「他の音と混ざる控えめな再生」扱いになり**アプリがNow Playingの座を取れず、ロック画面に曲名・操作が出ない／リモート操作が効かない**。主役として鳴らす連続再生（耳学）は `playback`＋オプション無しの専用コンテキストを使う（発音ボタンの単発再生は `mixWithOthers` のままで可）。表示/操作は `NowPlayingService`＋`AppDelegate.swift`（`MPNowPlayingInfoCenter`/`MPRemoteCommandCenter`）。チャンネル設定は `super.application` の**後**（rootViewController確定後）。
-- **リスト並び替え（ReorderableList）＆スライダー（シークバー）のちらつき対策（ベストプラクティス）**:
-  - **キーは安定・一意に**：`ReorderableListView`/`Sliver...` の各行は `ValueKey(不変のid)`（カード番号やインデックス等の可変値をkeyにしない）。`onReorder` はメインで**同期的に**state更新（重い永続化は後追い/バックグラウンド）。再生中要素は id で追従させる（本アプリの耳学キューが該当）。
-  - **スライダーは「離した直後にライブ値へ即戻さない」**：`onChangeEnd` で live 値に戻すと、内部状態（再生位置/対象行）が一瞬食い違い**つまみがカクッと飛ぶ**。ドラッグ解放後は**目標値でつまみを保持**し、実際の再生位置が目標へ追いつく（対象行が一致し誤差が小さくなる）まで live 追従を再開しない（`_hold`/`_holdLine`＋保険Timer。`listening_screen.dart` の `_SeekBar` 参照）。
-  - **アニメーションの範囲を最小化**：`AnimatedContainer` 等は変化させたい要素だけに限定し、リスト全体を包む `.animation` 相当の広域再描画を避ける。
+- **実行時のネットワーク通信を伴う機能の追加は要確認**（App Storeの「データ収集なし」申告が崩れるため）
 
 ---
 
@@ -284,6 +278,18 @@ dart run flutter_launcher_icons
 ```
 
 iOS/Android の全サイズが生成される（iOSはアルファ除去＝審査対応）。設定は `pubspec.yaml` の `flutter_launcher_icons:` セクション。
+
+---
+
+## Git / 秘密（運用ルール）
+
+- **Git 運用は個人共通ルール（[`~/.claude/CLAUDE.md`](~/.claude/CLAUDE.md)）と `git-workflow` スキルに従う。**
+  （要点：ソロ開発なので通常は `main` 直コミット可／commit・push は**指示されたときだけ**／コミットは小さく明確に、末尾に
+  `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`／秘密はコミット禁止・`git commit` 前にグローバルフックでも機械ブロック／
+  **ストア申請したら提出コミットに `vX.Y.Z` タグ**／**バージョン/ビルド番号を変えた・配信したら `.claude/docs/release-log.md` に記録**。）
+- **このプロジェクト固有の秘密ファイル**（絶対にコミット/共有・中身を読まない。`.gitignore` 済み）:
+  - `dart_defines.json`（`GEMINI_API_KEY` / `OPENAI_API_KEY`）
+  - `ios/AuthKey_*.p8`（App Store Connect API キー）／ `ios/AppStoreConnectKeyIdIssuerId.json`（Issuer/Key ID）
 
 ---
 
