@@ -69,7 +69,11 @@ class OverallProgress {
 
 final dailySessionInfoProvider = FutureProvider<DailySessionInfo>((ref) async {
   final repo = ref.watch(cardRepositoryProvider);
-  final settings = ref.watch(settingsProvider);
+  // settings 全体ではなく新規上限だけを watch する。通知トグルやクイズ設定の
+  // 変更でこのプロバイダーが再計算されると、設定画面・ホームの表示が
+  // その都度リロードされてチラつくため（select で依存を絞る）
+  final newCardsPerDay =
+      ref.watch(settingsProvider.select((s) => s.newCardsPerDay));
   final isPro = ref.watch(isProProvider);
   final localRepo = repo as LocalCardRepository;
 
@@ -82,9 +86,8 @@ final dailySessionInfoProvider = FutureProvider<DailySessionInfo>((ref) async {
   // 「今日だけ追加で学ぶ」の当日限りの枠を上限に足す（明日は設定値に戻る）
   final extraToday = ref.watch(todayExtraNewCardsProvider);
   final planMax = (isPro
-          ? settings.newCardsPerDay
-          : settings.newCardsPerDay
-              .clamp(0, MonetizationConfig.freeMaxNewCardsPerDay)) +
+          ? newCardsPerDay
+          : newCardsPerDay.clamp(0, MonetizationConfig.freeMaxNewCardsPerDay)) +
       extraToday;
   // その日の残り新規枠 = 1日の上限 − 今日すでに学習した新規カード。
   // 途中でやめて再開しても、消化した分だけ「今日のセッション」の新規が減る。

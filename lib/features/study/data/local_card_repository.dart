@@ -330,9 +330,27 @@ class LocalCardRepository implements CardRepository {
   @override
   Future<void> resetAllData() async {
     final db = await _db.database;
-    await db.delete('learning_progress');
-    await db.delete('daily_stats');
-    // cardsテーブルはシードデータを残す（learning_progressのみリセット）
+    // learning_progress は「削除」ではなく「初期状態で作り直す」。
+    // 出題系クエリ（getNewCards / getCategoryStudyCards 等）は
+    // INNER JOIN learning_progress 前提のため、行を消したままにすると
+    // 全カードが出題対象から消える（過去に「リセット後に何も学習できない」
+    // 不具合の原因になった。シードは seed_version が同じだと走らず、
+    // 行を復元してくれない）。
+    await db.transaction((txn) async {
+      await txn.delete('learning_progress');
+      await txn.delete('daily_stats');
+      final cards = await txn.query('cards', columns: ['id']);
+      final batch = txn.batch();
+      for (final row in cards) {
+        batch.insert(
+          'learning_progress',
+          LearningProgress.initial(row['id'] as String).toMap(),
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      }
+      await batch.commit(noResult: true);
+    });
+    // cardsテーブルはシードデータを残す（進捗と統計のみリセット）
   }
 
   /// カテゴリ別の全カード数を返す

@@ -279,11 +279,12 @@ class SettingsScreen extends ConsumerWidget {
             child: NewCardsSetting(
               maxValue: AppConstants.maxNewCardsSetting,
               // 「今日への影響」をライブ表示するため、今日の新規学習数を渡す
+              // valueOrNull は再計算中も前回値を返す（asData はローディング中
+              // null になり、キャプションが消える→現れるチラつきの原因になる）
               todayStudiedNew: ref
                   .watch(dailySessionInfoProvider)
-                  .asData
-                  ?.value
-                  .newCardsStudiedToday,
+                  .valueOrNull
+                  ?.newCardsStudiedToday,
             ),
           ),
           const SizedBox(height: 12),
@@ -680,9 +681,14 @@ class SettingsScreen extends ConsumerWidget {
     final repo = ref.read(cardRepositoryProvider) as LocalCardRepository;
     await repo.resetAllData();
 
-    // 再シード
+    // 再シード（seed_versionが同じ場合は何もしない。進捗の復元は
+    // resetAllData 側が担う）
     final db = ref.read(databaseProvider);
     await SeedData(db).seed();
+
+    // ホーム・カテゴリのキャッシュ済み集計を破棄（忘れると「学習する
+    // カードがない」等の古い表示が残る）
+    invalidateProgressProviders(ref);
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

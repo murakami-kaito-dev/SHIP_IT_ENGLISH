@@ -439,7 +439,8 @@ final studySessionProvider = StateNotifierProvider.autoDispose<
 final lastSessionResultProvider = StateProvider<SessionResult?>((ref) => null);
 
 final studyModeProvider = Provider<int>((ref) {
-  final configured = ref.watch(settingsProvider).newCardsPerDay;
+  final configured =
+      ref.watch(settingsProvider.select((s) => s.newCardsPerDay));
   // 「今日だけ追加で学ぶ」の当日限りの枠（日付が変わると0に戻る）
   final extraToday = ref.watch(todayExtraNewCardsProvider);
   // 無料プランは新規カード枚数に上限がかかる（サブスク無効時は素通し）

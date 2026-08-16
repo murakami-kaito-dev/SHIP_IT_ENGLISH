@@ -34,3 +34,21 @@
   「今日すでにX枚学習 → 今日はあとY枚」（`newCardsTodayImpact`。設定タブのみ。オンボーディングでは出さない）。
 - **「復習をクイズ形式でも出題」トグル**（`SettingsState.quizEnabled`・既定ON・`keyQuizEnabled`）。
   OFF時はユニットテスト以外すべてフリップカード（study_screen 側で `quizModeFor` をスキップ）。
+
+## 学習データリセットの仕様（2026-08-16 修正）
+- `resetAllData()` は learning_progress を**削除ではなく初期状態で再作成**する
+  （全カード分の初期行を再INSERT）。出題系クエリは `INNER JOIN learning_progress`
+  前提のため、行が無いと「学習するカードがない」状態になる（シードは seed_version
+  不変だと走らず復元しない）。daily_stats は削除。リセット後は
+  `invalidateProgressProviders` でキャッシュ集計を破棄する。
+- **リセットで消えるもの**: SRS進捗（全カード未学習に戻る）・日別統計（今日の新規消化数
+  含む＝新規枠も全回復）。
+- **リセットで残るもの（獲得資産・意図した仕様）**: XP/レベル・バッジ・ストリーク保護・
+  ストリーク日数（shared_preferences管理）・今日のクエスト進捗・「今日だけ追加」枠。
+
+## 設定変更時のチラつき対策（2026-08-16）
+- `dailySessionInfoProvider` / `studyModeProvider` は settings のうち
+  **`newCardsPerDay` だけを select で watch**（通知・クイズ等のトグルで再計算させない）。
+- 設定画面の「今日への影響」表示は `dailySessionInfoProvider` の **`valueOrNull`** を使う
+  （`asData` はリロード中 null になり、キャプションが消える→現れるチラつきになる）。
+
