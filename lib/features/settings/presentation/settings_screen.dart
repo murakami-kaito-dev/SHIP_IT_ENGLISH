@@ -15,6 +15,7 @@ import 'package:ship_it_english/core/services/notification_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
 import 'package:ship_it_english/features/study/data/local_card_repository.dart';
+import 'package:ship_it_english/shared/widgets/edge_widgets.dart';
 import 'package:ship_it_english/shared/widgets/new_cards_setting.dart';
 import 'package:ship_it_english/shared/widgets/wheel_time_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -243,22 +244,17 @@ class SettingsScreen extends ConsumerWidget {
                             .copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
-                    SegmentedButton<LanguageMode>(
-                      segments: const [
-                        ButtonSegment(
-                          value: LanguageMode.ja,
-                          label: Text('日本語'),
-                        ),
-                        ButtonSegment(
-                          value: LanguageMode.en,
-                          label: Text('English'),
-                        ),
+                    EdgeChips<LanguageMode>(
+                      expanded: false,
+                      items: const [
+                        EdgeChipItem(LanguageMode.ja, '日本語'),
+                        EdgeChipItem(LanguageMode.en, 'English'),
                       ],
-                      selected: {mode},
-                      onSelectionChanged: (selection) {
+                      selected: mode,
+                      onChanged: (selection) {
                         ref
                             .read(languageModeProvider.notifier)
-                            .setMode(selection.first);
+                            .setMode(selection);
                       },
                     ),
                   ],

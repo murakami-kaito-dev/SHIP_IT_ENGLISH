@@ -12,6 +12,7 @@ import 'package:ship_it_english/features/home/presentation/widgets/skill_score_c
 import 'package:ship_it_english/features/home/providers/home_providers.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
 import 'package:ship_it_english/features/study/presentation/widgets/range_study_sheet.dart';
+import 'package:ship_it_english/shared/widgets/edge_widgets.dart';
 import 'package:ship_it_english/shared/widgets/gradient_button.dart';
 import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/streak_widget.dart';
@@ -348,36 +349,25 @@ class _StreakShieldCard extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(strings.streakShieldDesc, style: AppTheme.captionText),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              onPressed: canBuy
-                  ? () async {
-                      final ok = await ref
-                          .read(gamificationProvider.notifier)
-                          .buyStreakFreeze();
-                      if (ok && context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(strings.streakShieldPurchased)),
-                        );
-                      }
+          GradientButton(
+            label: atMax
+                ? strings.streakShieldMax
+                : (canBuy
+                    ? strings.exchangeForXp(GamificationConfig.streakFreezeCost)
+                    : strings.streakShieldNotEnough),
+            icon: Icons.add_moderator_rounded,
+            onPressed: canBuy
+                ? () async {
+                    final ok = await ref
+                        .read(gamificationProvider.notifier)
+                        .buyStreakFreeze();
+                    if (ok && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(strings.streakShieldPurchased)),
+                      );
                     }
-                  : null,
-              icon: const Icon(Icons.add_moderator_rounded, size: 18),
-              label: Text(
-                atMax
-                    ? strings.streakShieldMax
-                    : (canBuy
-                        ? strings.exchangeForXp(
-                            GamificationConfig.streakFreezeCost)
-                        : strings.streakShieldNotEnough),
-              ),
-            ),
+                  }
+                : null,
           ),
         ],
       ),
@@ -433,29 +423,15 @@ class _TodaySessionCard extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           // 学習範囲の選択（新規のみ / 復習のみ / 両方）。合計はこの選択で変わる。
-          SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<StudyScope>(
-              style: SegmentedButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                textStyle: AppTheme.captionText,
-              ),
-              showSelectedIcon: false,
-              segments: [
-                ButtonSegment(
-                    value: StudyScope.newOnly,
-                    label: Text(strings.studyScopeNewOnly)),
-                ButtonSegment(
-                    value: StudyScope.reviewOnly,
-                    label: Text(strings.studyScopeReviewOnly)),
-                ButtonSegment(
-                    value: StudyScope.both,
-                    label: Text(strings.studyScopeBoth)),
-              ],
-              selected: {scope},
-              onSelectionChanged: (s) =>
-                  ref.read(settingsProvider.notifier).setStudyScope(s.first),
-            ),
+          EdgeChips<StudyScope>(
+            items: [
+              EdgeChipItem(StudyScope.newOnly, strings.studyScopeNewOnly),
+              EdgeChipItem(StudyScope.reviewOnly, strings.studyScopeReviewOnly),
+              EdgeChipItem(StudyScope.both, strings.studyScopeBoth),
+            ],
+            selected: scope,
+            onChanged: (s) =>
+                ref.read(settingsProvider.notifier).setStudyScope(s),
           ),
           const SizedBox(height: 14),
           // 新規（復習のみ選択時は薄く）
@@ -524,28 +500,20 @@ class _TodaySessionCard extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
               // カテゴリと番号範囲を指定して学習する（範囲フィルタ）
-              OutlinedButton(
+              EdgeIconButton(
+                icon: Icons.tune_rounded,
                 onPressed: () => showRangeStudySheet(context),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(56, AppTheme.buttonHeight),
-                ),
-                child: const Icon(Icons.tune_rounded),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              // 今日学習したカードだけをもう一度出題する
-              onPressed: info.practiceCardsCount > 0
-                  ? () => context.push('/study?mode=practice')
-                  : null,
-              icon: const Icon(Icons.refresh_rounded),
-              label: Text(
-                '${strings.reviewAgain} (${info.practiceCardsCount})',
-              ),
-            ),
+          // 今日学習したカードだけをもう一度出題する
+          EdgeButton(
+            label: '${strings.reviewAgain} (${info.practiceCardsCount})',
+            icon: Icons.refresh_rounded,
+            onPressed: info.practiceCardsCount > 0
+                ? () => context.push('/study?mode=practice')
+                : null,
           ),
         ],
       ),

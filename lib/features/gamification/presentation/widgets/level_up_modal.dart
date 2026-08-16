@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ship_it_english/core/services/sound_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/confetti_celebration.dart';
+import 'package:ship_it_english/shared/widgets/gradient_button.dart';
 
 /// レベルアップ時に「LEVEL UP!」を Scale-up + Bounce(Spring) で豪華に出すモーダル。
 /// 背後で紙吹雪も発火し、ハプティクス＋SFXフックを鳴らす。
@@ -134,19 +135,9 @@ class _LevelUpCardState extends State<_LevelUpCard> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    child: Text(widget.continueLabel),
-                  ),
+                GradientButton(
+                  label: widget.continueLabel,
+                  onPressed: () => Navigator.of(context).maybePop(),
                 ),
               ],
             ),

@@ -10,6 +10,7 @@ import 'package:ship_it_english/core/monetization/monetization_config.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
 import 'package:ship_it_english/features/categories/providers/categories_providers.dart';
+import 'package:ship_it_english/shared/widgets/edge_widgets.dart';
 import 'package:ship_it_english/shared/widgets/dial_picker.dart';
 
 /// 範囲指定シートのモード。学習か、耳学（リスニング）か。
@@ -221,22 +222,15 @@ class _RangeStudySheetState extends ConsumerState<_RangeStudySheet> {
                   // 出題順
                   _label(strings.rangeSelectOrder),
                   const SizedBox(height: 8),
-                  SegmentedButton<bool>(
-                    segments: [
-                      ButtonSegment(
-                        value: false,
-                        label: Text(strings.rangeOrderAsc),
-                        icon: const Icon(Icons.sort, size: 18),
-                      ),
-                      ButtonSegment(
-                        value: true,
-                        label: Text(strings.rangeOrderRandom),
-                        icon: const Icon(Icons.shuffle, size: 18),
-                      ),
+                  EdgeChips<bool>(
+                    items: [
+                      EdgeChipItem(false, strings.rangeOrderAsc,
+                          icon: Icons.sort),
+                      EdgeChipItem(true, strings.rangeOrderRandom,
+                          icon: Icons.shuffle),
                     ],
-                    selected: {_random},
-                    onSelectionChanged: (sel) =>
-                        setState(() => _random = sel.first),
+                    selected: _random,
+                    onChanged: (sel) => setState(() => _random = sel),
                   ),
                   const SizedBox(height: 20),
 

@@ -20,6 +20,10 @@ class AppTheme {
   static const Color surfaceBorder = Color(0xFFE9E4D8); // 暖色の細枠
   /// カード・ボタンの「下エッジ」（押せる厚み。骨格=案F）
   static const Color surfaceEdge = Color(0xFFE0DACB);
+
+  /// 選択中チップの枠と下エッジ（淡インディゴ系。EdgeChips用）
+  static const Color chipSelectedBorder = Color(0xFFC9C4FF);
+  static const Color chipSelectedEdge = Color(0xFF9C94F5);
   /// ゲージの溝（暖色トラック）
   static const Color track = Color(0xFFF1EDE2);
 

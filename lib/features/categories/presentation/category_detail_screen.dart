@@ -10,6 +10,7 @@ import 'package:ship_it_english/features/categories/providers/categories_provide
 import 'package:ship_it_english/features/study/domain/units.dart';
 import 'package:ship_it_english/features/study/presentation/widgets/range_study_sheet.dart';
 import 'package:ship_it_english/features/study/providers/units_providers.dart';
+import 'package:ship_it_english/shared/widgets/edge_widgets.dart';
 import 'package:ship_it_english/shared/widgets/app_background.dart';
 import 'package:ship_it_english/shared/widgets/card_detail_sheet.dart';
 import 'package:ship_it_english/shared/widgets/card_list_tile.dart';
@@ -148,21 +149,14 @@ class _BottomBar extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, AppTheme.buttonHeight),
-                    foregroundColor: AppTheme.primary,
-                    side: const BorderSide(color: AppTheme.primary),
-                  ),
+                child: EdgeButton(
+                  label: strings.listenAction,
+                  icon: isPro ? Icons.headphones_rounded : Icons.lock_outline,
                   onPressed: () => isPro
                       ? showRangeStudySheet(context,
                           fixedCategoryId: categoryId,
                           mode: RangeSheetMode.listen)
                       : context.push('/paywall'),
-                  icon: Icon(
-                      isPro ? Icons.headphones_rounded : Icons.lock_outline,
-                      size: 18),
-                  label: Text(strings.listenAction),
                 ),
               ),
             ],
@@ -316,28 +310,29 @@ class _UnitTile extends StatelessWidget {
           const Spacer(),
           SizedBox(
             width: double.infinity,
-            height: 30,
             child: cleared
-                ? OutlinedButton(
+                ? EdgeButton(
+                    label: strings.unitClearedChip,
                     onPressed: onTest,
-                    style: OutlinedButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      foregroundColor: accent,
-                      side: BorderSide(color: accent.withOpacity(0.6)),
-                    ),
-                    child: Text(strings.unitClearedChip,
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w700)),
+                    height: 30,
+                    fontSize: 12,
+                    foreground: accent,
                   )
-                : FilledButton(
-                    onPressed: onTest,
-                    style: FilledButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      backgroundColor: AppTheme.primary,
+                : EdgePressable(
+                    onTap: onTest,
+                    fill: AppTheme.primary,
+                    edgeColor: AppTheme.primaryDark,
+                    radius: 11,
+                    child: SizedBox(
+                      height: 27.5,
+                      child: Center(
+                        child: Text(strings.unitTestButton,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white)),
+                      ),
                     ),
-                    child: Text(strings.unitTestButton,
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w700)),
                   ),
           ),
         ],
