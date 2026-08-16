@@ -1,5 +1,6 @@
 import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 import 'package:ship_it_english/features/gamification/domain/quests.dart';
+import 'package:ship_it_english/core/constants/app_constants.dart';
 
 /// UI表示言語モード。
 /// - [ja] 日本語話者向け: UIは日本語、英語フレーズを学習する（従来の動作）
@@ -722,6 +723,47 @@ class AppStrings {
       ? '今日はすでに新規を$studied枚学習しました'
       : 'You\'ve already studied $studied new cards today.';
 
+  /// 新規が上限到達で0枚のときの理由表示（1b）。
+  String newCardsLimitReachedNote(int studied, int limit) =>
+      mode == LanguageMode.ja
+          ? '今日の新規は上限に達しました（学習済み$studied枚 / 上限$limit枚）'
+          : 'Daily new-card limit reached ($studied studied / limit $limit).';
+
+  /// 「今日だけ追加で学ぶ」ボタン（1d）。
+  String get extraStudyButton => mode == LanguageMode.ja
+      ? '＋今日だけ${AppConstants.extraNewCardsStep}枚追加'
+      : '+${AppConstants.extraNewCardsStep} more today';
+
+  /// 今日の追加枠の補足（1d。追加済みのとき）。
+  String extraStudyNote(int extra) => mode == LanguageMode.ja
+      ? '今日だけの追加枠: +$extra枚（明日は上限に戻ります）'
+      : 'Extra for today: +$extra (resets tomorrow).';
+
+  /// 設定変更のライブフィードバック（1c）。
+  String newCardsTodayImpact(int studied, int remaining) =>
+      mode == LanguageMode.ja
+          ? '今日すでに$studied枚学習 → 今日はあと$remaining枚'
+          : '$studied studied today → $remaining left today';
+
+  /// 復習行の補足（3a。「復習」の意味を明示）。
+  String get reviewDueNote => mode == LanguageMode.ja
+      ? '復習期限が来たカード（昨日以前に学習した分）'
+      : 'Cards due for review (from earlier days)';
+
+  /// おさらいテストボタンの補足（3c）。
+  String get reviewAgainNote => mode == LanguageMode.ja
+      ? '今日学習したカードをもう一度（テスト形式）'
+      : 'Re-test the cards you studied today';
+
+  /// クイズ出題トグル（2b）。
+  String get quizToggleTitle => mode == LanguageMode.ja
+      ? '復習をクイズ形式でも出題'
+      : 'Quiz formats in reviews';
+
+  String get quizToggleDesc => mode == LanguageMode.ja
+      ? '復習カードに4択・音声・穴埋めをときどき混ぜます。オフにするとすべてフリップカードになります（ユニットテストを除く）。'
+      : 'Occasionally mixes multiple-choice, audio and cloze into reviews. Off = flip cards only (unit tests excluded).';
+
   /// カレンダーの日別詳細（例:「24枚 学習」/「24 cards」）。
   String historyDayCards(int n) =>
       mode == LanguageMode.ja ? '$n枚 学習' : '$n cards';
@@ -739,10 +781,12 @@ class AppStrings {
             '前回の学習で決まった「次回復習日」が来たカードです。よく覚えているカードほど次の復習までの間隔が長くなります。'),
         MapEntry('合計・所要時間',
             '今日のセッションで出題される「新規＋復習」の合計枚数と、そのおおよその目安時間です。'),
-        MapEntry('1日の新規カード数',
-            '1日に追加する新規カードの上限です。ここを増減すると上の「新規（残り）」も変わります。'),
-        MapEntry('もう一度復習する',
-            '今日学習したカードを、その日のうちにもう一度復習できます（復習間隔には影響しません）。'),
+        MapEntry('新規カードの1日上限',
+            '1日に追加する新規カードの上限です（設定タブで変更）。増減すると上の「新規（残り）」も変わります。「今日だけ追加」を使うと、上限を変えずに今日だけ枠を増やせます。'),
+        MapEntry('今日のおさらいテスト',
+            '今日学習したカードだけを、その日のうちにもう一度確認します（テスト形式が混ざります。復習間隔には影響しません）。'),
+        MapEntry('「復習」と「今日のおさらいテスト」の違い',
+            '「復習」は昨日以前に学習して復習期限が来たカード（SRSの予定どおりの復習）。「今日のおさらいテスト」は今日学習したカードのその日のうちの再確認です。'),
         MapEntry('評価ボタンの下の時間',
             '「忘れた／曖昧／覚えてた」の下の時間は、その評価を選んだ場合に次へ復習するまでの間隔です。忘れたは短く、覚えてたは長くなります（忘却曲線に基づく間隔反復）。'),
       ];
@@ -756,10 +800,12 @@ class AppStrings {
           'Cards whose scheduled review date has arrived. The better you know a card, the longer until its next review.'),
       MapEntry('Total & time',
           'The combined new + review cards for today\'s session, and a rough time estimate.'),
-      MapEntry('New cards per day',
-          'The daily cap on how many new cards are added. Changing it also changes the "New (left)" count above.'),
-      MapEntry('Review again',
-          'Lets you review the cards you studied today once more, same day (it does not change their intervals).'),
+      MapEntry('Daily new-card limit',
+          'The daily cap on how many new cards are added (change it in Settings). Changing it also changes the "New (left)" count above. "+5 more today" adds extra cards just for today without changing the limit.'),
+      MapEntry("Today's recap test",
+          'Re-checks only the cards you studied today, same day (quiz formats may appear; intervals are not affected).'),
+      MapEntry("Review vs. Today's recap test",
+          '"Review" = cards from earlier days whose scheduled review is due (normal SRS). "Today\'s recap test" = a same-day re-check of what you studied today.'),
       MapEntry('Time under rating buttons',
           'The time under Forgot / Unsure / Got it is when that card comes back if you pick that rating. Forgot is short, Got it is long (spaced repetition based on the forgetting curve).'),
     ];
@@ -781,7 +827,7 @@ class AppStrings {
     sessionTotalLabel: '合計',
     startLearning: '学習を始める',
     sessionCompleteToday: '今日のセッション完了！',
-    reviewAgain: 'もう一度復習する',
+    reviewAgain: '今日のおさらいテスト',
     noCardsToReview: '今復習するカードはありません',
     allMastered: '🎊 全カード習得済み！',
     reviewWeakCards: '苦手なカードを復習',
@@ -870,7 +916,7 @@ class AppStrings {
     rangeMin: '最小',
     rangeMax: '最大',
     newCardsMaxLabel: '最大',
-    newStudyCardsHeading: '1日の新規学習カード数',
+    newStudyCardsHeading: '新規カードの1日上限',
     presetSteadyName: 'マイペース',
     presetStandardName: 'スタンダード',
     presetSpeedName: 'スピード学習',
@@ -925,7 +971,7 @@ class AppStrings {
     sessionTotalLabel: 'Total',
     startLearning: 'Start Learning',
     sessionCompleteToday: "Today's session complete!",
-    reviewAgain: 'Review again',
+    reviewAgain: 'Today\'s recap test',
     noCardsToReview: 'No cards to review right now',
     allMastered: '🎊 All cards mastered!',
     reviewWeakCards: 'Review weak cards',
@@ -1017,7 +1063,7 @@ class AppStrings {
     rangeMin: 'Min',
     rangeMax: 'Max',
     newCardsMaxLabel: 'Max',
-    newStudyCardsHeading: 'New study cards per day',
+    newStudyCardsHeading: 'Daily new-card limit',
     presetSteadyName: 'Steady',
     presetStandardName: 'Standard',
     presetSpeedName: 'Speed',

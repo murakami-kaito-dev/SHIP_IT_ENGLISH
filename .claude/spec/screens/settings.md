@@ -27,3 +27,10 @@
 ## 注意
 - 新規カード数の設定は Settings ではなく **Home の「今日のセッション」内**にある。
 - Pro判定・境界は `isProProvider` / `MonetizationConfig` のみ（[systems/monetization.md](../systems/monetization.md)）。
+
+## 学習セクションの拡張（2026-08-16）
+- 見出しを**「新規カードの1日上限」**に変更（`newStudyCardsHeading`。「1日の新規学習カード数」から改名）。
+- `NewCardsSetting(todayStudiedNew: ...)` で**今日への影響をライブ表示**:
+  「今日すでにX枚学習 → 今日はあとY枚」（`newCardsTodayImpact`。設定タブのみ。オンボーディングでは出さない）。
+- **「復習をクイズ形式でも出題」トグル**（`SettingsState.quizEnabled`・既定ON・`keyQuizEnabled`）。
+  OFF時はユニットテスト以外すべてフリップカード（study_screen 側で `quizModeFor` をスキップ）。

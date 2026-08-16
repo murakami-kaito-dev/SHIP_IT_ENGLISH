@@ -25,10 +25,16 @@ class NewCardsSetting extends ConsumerStatefulWidget {
   /// タイトル行を出すか（オンボーディングはページ側に見出しがあるので false）。
   final bool showHeading;
 
+  /// 今日すでに学習した新規カード数。null以外を渡すと、上限を変えたときの
+  /// 「今日への影響」（今日すでに◯枚学習 → 今日はあと◯枚）をライブ表示する。
+  /// 設定タブでのみ使う（オンボーディングは学習前なので不要）。
+  final int? todayStudiedNew;
+
   const NewCardsSetting({
     super.key,
     this.maxValue = AppConstants.maxNewCardsSetting,
     this.showHeading = true,
+    this.todayStudiedNew,
   });
 
   @override
@@ -158,6 +164,21 @@ class _NewCardsSettingState extends ConsumerState<NewCardsSetting> {
             _apply(value);
           },
         ),
+        // 上限を変えた瞬間に「今日あと何枚学べるか」が分かるライブ表示（1c）。
+        // 例: 5枚学習後に上限を2へ下げる → 「今日はあと0枚」と即座に見える。
+        if (widget.todayStudiedNew != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            strings.newCardsTodayImpact(
+              widget.todayStudiedNew!,
+              (current - widget.todayStudiedNew!).clamp(0, current),
+            ),
+            style: AppTheme.captionText.copyWith(
+              color: AppTheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
         if (!isPro) ...[
           const SizedBox(height: 8),
           Text(strings.proSliderHint, style: AppTheme.captionText),

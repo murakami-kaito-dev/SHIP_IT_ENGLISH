@@ -32,6 +32,10 @@ class SettingsState {
   final bool streakReminderEnabled;
   final StudyScope studyScope;
 
+  /// 復習カードをクイズ形式（4択・音声・穴埋め）でも出題するか（既定オン）。
+  /// オフにするとユニットテスト以外はすべてフリップカードで出題する。
+  final bool quizEnabled;
+
   const SettingsState({
     required this.newCardsPerDay,
     required this.reminderEnabled,
@@ -39,6 +43,7 @@ class SettingsState {
     required this.reminderMinute,
     required this.streakReminderEnabled,
     required this.studyScope,
+    required this.quizEnabled,
   });
 
   SettingsState copyWith({
@@ -48,6 +53,7 @@ class SettingsState {
     int? reminderMinute,
     bool? streakReminderEnabled,
     StudyScope? studyScope,
+    bool? quizEnabled,
   }) {
     return SettingsState(
       newCardsPerDay: newCardsPerDay ?? this.newCardsPerDay,
@@ -57,6 +63,7 @@ class SettingsState {
       streakReminderEnabled:
           streakReminderEnabled ?? this.streakReminderEnabled,
       studyScope: studyScope ?? this.studyScope,
+      quizEnabled: quizEnabled ?? this.quizEnabled,
     );
   }
 }
@@ -73,6 +80,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
           reminderMinute: AppConstants.defaultReminderMinute,
           streakReminderEnabled: true,
           studyScope: StudyScope.both,
+          quizEnabled: true,
         ),
       ) {
     _load();
@@ -96,6 +104,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
           prefs.getBool(AppConstants.keyStreakReminderEnabled) ?? true,
       studyScope:
           StudyScope.fromString(prefs.getString(AppConstants.keyStudyScope)),
+      quizEnabled: prefs.getBool(AppConstants.keyQuizEnabled) ?? true,
     );
   }
 
@@ -103,6 +112,12 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConstants.keyStudyScope, scope.value);
     state = state.copyWith(studyScope: scope);
+  }
+
+  Future<void> setQuizEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(AppConstants.keyQuizEnabled, value);
+    state = state.copyWith(quizEnabled: value);
   }
 
   Future<void> setNewCardsPerDay(int value) async {
@@ -155,3 +170,42 @@ final settingsProvider =
     StateNotifierProvider<SettingsNotifier, SettingsState>((ref) {
       return SettingsNotifier(ref);
     });
+
+/// 「今日だけ追加で学ぶ」の当日限りの新規追加枠。
+///
+/// 1日上限（[SettingsState.newCardsPerDay]）は恒久設定のまま、
+/// 「今日はもう少しやりたい」を上限とは別のカウンタで満たす（Ankiの
+/// custom study 相当）。日付が変わると自動で0に戻る（保存した日付と
+/// 今日が違えば無効扱い）。
+class ExtraNewCardsNotifier extends StateNotifier<int> {
+  ExtraNewCardsNotifier() : super(0) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final date = prefs.getString(AppConstants.keyExtraNewDate);
+    if (date == DateTime.now().toDateString()) {
+      state = prefs.getInt(AppConstants.keyExtraNewCount) ?? 0;
+    } else {
+      state = 0;
+    }
+  }
+
+  /// 今日の追加枠を [n] 枚増やす。
+  Future<void> add(int n) async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now().toDateString();
+    final stored = prefs.getString(AppConstants.keyExtraNewDate);
+    final base =
+        stored == today ? (prefs.getInt(AppConstants.keyExtraNewCount) ?? 0) : 0;
+    final next = base + n;
+    await prefs.setString(AppConstants.keyExtraNewDate, today);
+    await prefs.setInt(AppConstants.keyExtraNewCount, next);
+    state = next;
+  }
+}
+
+final todayExtraNewCardsProvider =
+    StateNotifierProvider<ExtraNewCardsNotifier, int>(
+        (ref) => ExtraNewCardsNotifier());

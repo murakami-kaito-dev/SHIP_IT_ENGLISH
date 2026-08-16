@@ -39,7 +39,7 @@ void main() {
     expect(find.text('マイペース'), findsOneWidget);
     expect(find.text('スタンダード'), findsOneWidget);
     expect(find.text('スピード学習'), findsOneWidget);
-    expect(find.text('1日の新規学習カード数'), findsOneWidget); // 見出し
+    expect(find.text('新規カードの1日上限'), findsOneWidget); // 見出し
   });
 
   testWidgets('プリセット押下で newCardsPerDay が該当値に更新される',

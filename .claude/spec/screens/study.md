@@ -43,3 +43,8 @@
 - 完了処理は try/catch＋`_completing` ガード（副作用失敗でも必ず遷移／二重起動防止）。
 - 「忘れた」はセッション内で最大2回まで再出題（`retryCount`・`maxRetriesPerSession`）。
 - カード読み上げは jaモードで同梱音声優先→無ければ端末TTS（[systems/tts-audio.md](../systems/tts-audio.md)）。
+
+## クイズ出題の設定ゲート（2026-08-16）
+- 設定「復習をクイズ形式でも出題」（`settingsProvider.quizEnabled`・既定ON）が**OFFのとき、
+  通常/おさらいセッションは常にフリップ**（`quizModeFor` を呼ばず `QuizMode.flip` 固定）。
+  **ユニットテストは合否判定が必要なため設定に関わらず常にクイズ**（`unitTestModeFor`）。

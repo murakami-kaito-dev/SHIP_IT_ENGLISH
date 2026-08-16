@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ship_it_english/core/constants/app_constants.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/services/streak_manager.dart';
@@ -447,7 +448,18 @@ class _TodaySessionCard extends ConsumerWidget {
                   value: strings.newCardsRemainingOfLimit(
                       info.newCardsCount, info.newCardsLimit),
                 ),
-                if (info.newCardsStudiedToday > 0)
+                // 残り0のときは「なぜ0なのか」を明示する（上限到達）。
+                // それ以外で今日学習済みがあれば従来の補足を出す。
+                if (info.newCardsCount == 0 && info.newCardsStudiedToday > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 32, top: 2, bottom: 2),
+                    child: Text(
+                      strings.newCardsLimitReachedNote(
+                          info.newCardsStudiedToday, info.newCardsLimit),
+                      style: AppTheme.captionText,
+                    ),
+                  )
+                else if (info.newCardsStudiedToday > 0)
                   Padding(
                     padding: const EdgeInsets.only(left: 32, top: 2, bottom: 2),
                     child: Text(
@@ -455,17 +467,63 @@ class _TodaySessionCard extends ConsumerWidget {
                       style: AppTheme.captionText,
                     ),
                   ),
+                // 今日だけの追加枠（使用中はその旨、上限到達時は追加ボタン）
+                if (ref.watch(todayExtraNewCardsProvider) > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 32, top: 2, bottom: 2),
+                    child: Text(
+                      strings.extraStudyNote(
+                          ref.watch(todayExtraNewCardsProvider)),
+                      style: AppTheme.captionText
+                          .copyWith(color: AppTheme.primary),
+                    ),
+                  ),
+                if (info.newCardsCount == 0 &&
+                    scope != StudyScope.reviewOnly) ...[
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 32),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(
+                        width: 190,
+                        child: EdgeButton(
+                          label: strings.extraStudyButton,
+                          onPressed: () => ref
+                              .read(todayExtraNewCardsProvider.notifier)
+                              .add(AppConstants.extraNewCardsStep),
+                          height: 36,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
           // 復習（新規のみ選択時は薄く）
           Opacity(
             opacity: scope == StudyScope.newOnly ? 0.35 : 1.0,
-            child: _InfoRow(
-              icon: Icons.refresh_rounded,
-              iconColor: AppTheme.ratingUncertain,
-              label: strings.reviewCards,
-              value: strings.cardsCount(info.reviewCardsCount),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _InfoRow(
+                  icon: Icons.refresh_rounded,
+                  iconColor: AppTheme.ratingUncertain,
+                  label: strings.reviewCards,
+                  value: strings.cardsCount(info.reviewCardsCount),
+                ),
+                // 「復習」の意味（期限が来たカード）を常時明示して、
+                // 下の「今日のおさらいテスト」との違いを分かるようにする
+                Padding(
+                  padding: const EdgeInsets.only(left: 32, top: 2, bottom: 2),
+                  child: Text(
+                    strings.reviewDueNote,
+                    style: AppTheme.captionText,
+                  ),
+                ),
+              ],
             ),
           ),
           const Divider(height: 22),
@@ -507,13 +565,20 @@ class _TodaySessionCard extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 10),
-          // 今日学習したカードだけをもう一度出題する
+          // 今日学習したカードだけをもう一度出題する（テスト形式が混ざる）
           EdgeButton(
             label: '${strings.reviewAgain} (${info.practiceCardsCount})',
             icon: Icons.refresh_rounded,
             onPressed: info.practiceCardsCount > 0
                 ? () => context.push('/study?mode=practice')
                 : null,
+          ),
+          const SizedBox(height: 6),
+          Center(
+            child: Text(
+              strings.reviewAgainNote,
+              style: AppTheme.captionText.copyWith(fontSize: 11),
+            ),
           ),
         ],
       ),

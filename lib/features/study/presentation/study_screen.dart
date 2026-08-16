@@ -513,16 +513,22 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     // choice にフォールバックする。
     var quizMode = QuizMode.flip;
     final currentCard = state.currentCard;
+    // 設定「復習をクイズ形式でも出題」。オフなら通常/おさらいセッションは
+    // すべてフリップ（ユニットテストは合否判定が必要なので常にクイズ）。
+    final quizEnabled =
+        ref.watch(settingsProvider.select((s) => s.quizEnabled));
     if (currentCard != null) {
       // ユニットテストは flip を出さず必ずクイズ（客観テストで合否判定）
       quizMode = widget.unitTest
           ? unitTestModeFor(cardId: currentCard.id, sessionSeed: _quizSeed)
-          : quizModeFor(
-              cardId: currentCard.id,
-              isNewCard: state.newCardIds.contains(currentCard.id),
-              isRetry: (state.retryCount[currentCard.id] ?? 0) > 0,
-              sessionSeed: _quizSeed,
-            );
+          : quizEnabled
+              ? quizModeFor(
+                  cardId: currentCard.id,
+                  isNewCard: state.newCardIds.contains(currentCard.id),
+                  isRetry: (state.retryCount[currentCard.id] ?? 0) > 0,
+                  sessionSeed: _quizSeed,
+                )
+              : QuizMode.flip;
       if (quizMode == QuizMode.cloze &&
           (mode == LanguageMode.en || clozeExample(currentCard) == null)) {
         quizMode = QuizMode.choice;

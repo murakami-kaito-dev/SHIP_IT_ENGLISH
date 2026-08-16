@@ -13,6 +13,7 @@ import 'package:ship_it_english/core/providers/progress_refresh.dart';
 import 'package:ship_it_english/core/services/backup_service.dart';
 import 'package:ship_it_english/core/services/notification_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
+import 'package:ship_it_english/features/home/providers/home_providers.dart';
 import 'package:ship_it_english/features/settings/providers/settings_providers.dart';
 import 'package:ship_it_english/features/study/data/local_card_repository.dart';
 import 'package:ship_it_english/shared/widgets/edge_widgets.dart';
@@ -270,13 +271,32 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
 
-          // 学習：1日の新規カード数（1〜100。以前はホームにあった）
+          // 学習：新規カードの1日上限（1〜上限）＋クイズ出題トグル
           _SectionHeader(strings.sectionStudy),
           Container(
             decoration: AppTheme.cardDecoration,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: const NewCardsSetting(
+            child: NewCardsSetting(
               maxValue: AppConstants.maxNewCardsSetting,
+              // 「今日への影響」をライブ表示するため、今日の新規学習数を渡す
+              todayStudiedNew: ref
+                  .watch(dailySessionInfoProvider)
+                  .asData
+                  ?.value
+                  .newCardsStudiedToday,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // 復習のクイズ形式出題（既定オン。フリップだけで復習したい人向け）
+          Container(
+            decoration: AppTheme.cardDecoration,
+            child: SwitchListTile(
+              title: Text(strings.quizToggleTitle, style: AppTheme.bodyText),
+              subtitle: Text(strings.quizToggleDesc,
+                  style: AppTheme.captionText),
+              value: settings.quizEnabled,
+              activeColor: AppTheme.primary,
+              onChanged: (v) => notifier.setQuizEnabled(v),
             ),
           ),
           const SizedBox(height: 20),

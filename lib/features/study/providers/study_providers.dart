@@ -440,9 +440,12 @@ final lastSessionResultProvider = StateProvider<SessionResult?>((ref) => null);
 
 final studyModeProvider = Provider<int>((ref) {
   final configured = ref.watch(settingsProvider).newCardsPerDay;
+  // 「今日だけ追加で学ぶ」の当日限りの枠（日付が変わると0に戻る）
+  final extraToday = ref.watch(todayExtraNewCardsProvider);
   // 無料プランは新規カード枚数に上限がかかる（サブスク無効時は素通し）
   if (!ref.watch(isProProvider)) {
-    return configured.clamp(0, MonetizationConfig.freeMaxNewCardsPerDay);
+    return configured.clamp(0, MonetizationConfig.freeMaxNewCardsPerDay) +
+        extraToday;
   }
-  return configured;
+  return configured + extraToday;
 });

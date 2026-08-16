@@ -61,6 +61,14 @@ class AppConstants {
   static const String keyLanguageMode = 'language_mode';
   static const String keyOnboardingDone = 'onboarding_done';
   static const String keyReviewRequested = 'review_requested';
+
+  /// 「今日だけ追加で学ぶ」（1日上限とは別の当日限りの新規追加枠）
+  static const String keyExtraNewDate = 'extra_new_date';
+  static const String keyExtraNewCount = 'extra_new_count';
+  static const int extraNewCardsStep = 5;
+
+  /// 復習をクイズ形式（4択・音声・穴埋め）でも出題するか
+  static const String keyQuizEnabled = 'quiz_enabled';
   static const String keyProEntitlement = 'pro_entitlement';
   static const String keyTotalXp = 'gamification_total_xp';
   // これまでに交換（消費）したXPの累計。使えるXP = 通算XP − 使用済みXP。

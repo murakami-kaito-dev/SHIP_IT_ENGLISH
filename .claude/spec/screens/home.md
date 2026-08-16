@@ -27,3 +27,17 @@
 ## 重要な仕様
 - **今日の残り新規枠 = 1日の上限 − 今日学習した新規（daily_stats.new_cards）**。途中でやめて再開しても満タンに戻らない（0/40→3枚やって0/37）。日付が変わると上限にリセット。
 - 学習後の表示更新は `invalidateProgressProviders(ref)` に依存（Studyの完了/離脱時に呼ばれる）。
+
+## 今日のセッションの文言・追加枠（2026-08-16 直感性改善）
+- **「新規」は1日上限方式**（残り = 上限 − 今日学習した新規）。残り0かつ学習済み>0のときは
+  「今日の新規は上限に達しました（学習済みX枚 / 上限Y枚）」と理由を明示（`newCardsLimitReachedNote`）。
+- **「今日だけ追加で学ぶ」**: 残り0のとき「＋今日だけ5枚追加」ボタン（`extraStudyButton`・
+  刻みは `AppConstants.extraNewCardsStep`）。恒久設定を変えずに当日限りの枠を増やす
+  （`todayExtraNewCardsProvider`。日付が変わると0に戻る。上限計算は
+  `dailySessionInfoProvider` と `studyModeProvider` の両方に加算）。使用中は
+  「今日だけの追加枠: +N枚」を表示。
+- **復習行の直下に常時キャプション**「復習期限が来たカード（昨日以前に学習した分）」
+  （`reviewDueNote`）。
+- **「もう一度復習する」→「今日のおさらいテスト (n)」に改名**（`reviewAgain`）。ボタン下に
+  「今日学習したカードをもう一度（テスト形式）」（`reviewAgainNote`）。ヘルプ（?）にも
+  「復習」との違いの項目を追加。

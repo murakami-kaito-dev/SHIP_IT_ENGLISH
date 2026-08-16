@@ -79,10 +79,13 @@ final dailySessionInfoProvider = FutureProvider<DailySessionInfo>((ref) async {
   final newCount = await localRepo.getNewCardsCount(
     allowedCategories: isPro ? null : MonetizationConfig.freeCategoryIds,
   );
-  final planMax = isPro
-      ? settings.newCardsPerDay
-      : settings.newCardsPerDay
-          .clamp(0, MonetizationConfig.freeMaxNewCardsPerDay);
+  // 「今日だけ追加で学ぶ」の当日限りの枠を上限に足す（明日は設定値に戻る）
+  final extraToday = ref.watch(todayExtraNewCardsProvider);
+  final planMax = (isPro
+          ? settings.newCardsPerDay
+          : settings.newCardsPerDay
+              .clamp(0, MonetizationConfig.freeMaxNewCardsPerDay)) +
+      extraToday;
   // その日の残り新規枠 = 1日の上限 − 今日すでに学習した新規カード。
   // 途中でやめて再開しても、消化した分だけ「今日のセッション」の新規が減る。
   final studiedNewToday =
