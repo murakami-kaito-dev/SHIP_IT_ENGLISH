@@ -172,18 +172,8 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
         .read(dailyQuestsProvider.notifier)
         .recordAnswer(rating: rating, combo: outcome.combo);
 
-    // レベルアップしたらモーダルで祝う（閉じるまで待ってから完了処理へ）
-    if (outcome.leveledUp && mounted) {
-      final strings = ref.read(stringsProvider);
-      await showLevelUpModal(
-        context,
-        newLevel: outcome.newLevel,
-        title: strings.levelUpTitle,
-        levelLabel: strings.levelWord,
-        continueLabel: strings.continueButton,
-        rankLabel: strings.rankName(rankForLevel(outcome.newLevel)),
-      );
-    }
+    // レベルアップしてもここでは祝わない（学習の流れを止めない）。
+    // モーダルは完了画面・途中離脱時に pendingLevelUp でまとめて表示する。
 
     if (ref.read(studySessionProvider).phase == StudyPhase.completed) {
       await _completeSession();
@@ -482,6 +472,22 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
       }
     }
     invalidateProgressProviders(ref);
+
+    // 途中離脱でも、セッション中に上がったレベルはここでまとめて祝う
+    // （学習中はモーダルを出さない方針のため）。
+    final g = ref.read(gamificationProvider);
+    if (g.pendingLevelUp && mounted) {
+      final strings = ref.read(stringsProvider);
+      await showLevelUpModal(
+        context,
+        newLevel: g.snapshot.level,
+        title: strings.levelUpTitle,
+        levelLabel: strings.levelWord,
+        continueLabel: strings.continueButton,
+        rankLabel: strings.rankName(rankForLevel(g.snapshot.level)),
+      );
+      ref.read(gamificationProvider.notifier).acknowledgeLevelUp();
+    }
     if (mounted) context.go('/');
   }
 

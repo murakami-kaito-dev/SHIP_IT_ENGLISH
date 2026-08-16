@@ -12,6 +12,7 @@ import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/confetti_celebration.dart';
 import 'package:ship_it_english/features/gamification/presentation/badges_screen.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/duck_mascot.dart';
+import 'package:ship_it_english/features/gamification/presentation/widgets/level_up_modal.dart';
 import 'package:ship_it_english/features/gamification/providers/badges_providers.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
@@ -46,19 +47,10 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
       // セレブレーション（紙吹雪は画面側で自動発火・ここで音と振動）
       SoundService.instance.celebrate();
 
-      // マイルストーンバッジの判定（新規獲得があれば少し置いてお祝い）
-      checkAndAwardBadges(ref).then((newBadges) {
-        if (newBadges.isEmpty || !mounted) return;
-        Future.delayed(const Duration(milliseconds: 900), () {
-          if (!mounted) return;
-          showNewBadgesModal(
-            context,
-            badges: newBadges,
-            strings: ref.read(stringsProvider),
-            mode: ref.read(languageModeProvider),
-          );
-        });
-      });
+      // レベルアップ→バッジの順で、重ならないよう直列にお祝いする。
+      // レベルアップは学習中には出さず（学習の流れを止めない方針）、
+      // ここでまとめて表示する。
+      _showCelebrationsInOrder();
 
       // 結果表示が落ち着いたタイミングでアプリ内レビューを依頼
       // （ストリーク3日以上・過去に未依頼の場合のみ表示される）
@@ -69,6 +61,39 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
         });
       }
     });
+  }
+
+  /// レベルアップモーダル → バッジ獲得モーダルの順に直列表示する。
+  Future<void> _showCelebrationsInOrder() async {
+    // 紙吹雪と結果表示が落ち着くまで少し待つ
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+
+    final g = ref.read(gamificationProvider);
+    if (g.pendingLevelUp) {
+      final strings = ref.read(stringsProvider);
+      await showLevelUpModal(
+        context,
+        newLevel: g.snapshot.level,
+        title: strings.levelUpTitle,
+        levelLabel: strings.levelWord,
+        continueLabel: strings.continueButton,
+        rankLabel: strings.rankName(rankForLevel(g.snapshot.level)),
+      );
+      ref.read(gamificationProvider.notifier).acknowledgeLevelUp();
+    }
+
+    // マイルストーンバッジの判定（新規獲得があればお祝い）
+    final newBadges = await checkAndAwardBadges(ref);
+    if (newBadges.isEmpty || !mounted) return;
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+    showNewBadgesModal(
+      context,
+      badges: newBadges,
+      strings: ref.read(stringsProvider),
+      mode: ref.read(languageModeProvider),
+    );
   }
 
   String _formatDuration(Duration d) {

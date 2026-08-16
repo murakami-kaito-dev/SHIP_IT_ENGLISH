@@ -81,3 +81,12 @@
 - **獲得記録**：`earnedBadgesProvider`（id→獲得日ISO・prefs `keyEarnedBadges`・重複付与なし）。
 - **判定タイミング**：`checkAndAwardBadges(ref)` をセッション完了画面（900ms後にお祝いモーダル）とユニットクリア後（クリアダイアログの後）に呼ぶ。
 - **UI**：`/badges`（3列グリッド・獲得=カラー＋獲得日/未獲得=グレー＋条件・ヘッダーに x/18）。入口は Home AppBar のトロフィー🏆。新規獲得は `showNewBadgesModal`（elasticOut）。
+
+## レベルアップ演出のタイミング（2026-08-16 変更）
+- **学習中はレベルアップモーダルを出さない**（学習の流れ・意欲を削がないため）。
+- `GamificationState.sessionStartLevel`（startSession時に記録）と現在レベルの差分
+  `pendingLevelUp` で「未祝いのレベルアップ」を保持し、
+  **①セッション完了画面**（紙吹雪→レベルアップ→バッジの順に直列表示）または
+  **②途中離脱時**（記録保存後・ホーム遷移前）にまとめて祝う。
+  表示後は `acknowledgeLevelUp()` で祝い済みにする（再表示防止）。
+

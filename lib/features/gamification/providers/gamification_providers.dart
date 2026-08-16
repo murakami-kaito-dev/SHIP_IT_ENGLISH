@@ -18,15 +18,23 @@ class GamificationState {
   /// 所持しているストリーク保護の数。
   final int streakFreezes;
 
+  /// セッション開始時点のレベル。学習中はレベルアップモーダルを出さず、
+  /// 完了画面・途中離脱時に current > これ で「まとめて祝う」判定に使う。
+  final int sessionStartLevel;
+
   const GamificationState({
     required this.snapshot,
     required this.combo,
     required this.sessionXp,
     required this.spentXp,
     required this.streakFreezes,
+    this.sessionStartLevel = 1,
   });
 
   bool get fever => combo >= GamificationConfig.feverThreshold;
+
+  /// セッション中に（まだ祝っていない）レベルアップがあったか。
+  bool get pendingLevelUp => snapshot.level > sessionStartLevel;
 
   /// 交換に使える残高XP（通算 − 使用済み）。レベルは通算XPで決まるので減らない。
   int get availableXp {
@@ -45,6 +53,7 @@ class GamificationState {
     int? sessionXp,
     int? spentXp,
     int? streakFreezes,
+    int? sessionStartLevel,
   }) =>
       GamificationState(
         snapshot: snapshot ?? this.snapshot,
@@ -52,6 +61,7 @@ class GamificationState {
         sessionXp: sessionXp ?? this.sessionXp,
         spentXp: spentXp ?? this.spentXp,
         streakFreezes: streakFreezes ?? this.streakFreezes,
+        sessionStartLevel: sessionStartLevel ?? this.sessionStartLevel,
       );
 
   static const initial = GamificationState(
@@ -181,8 +191,15 @@ class GamificationNotifier extends StateNotifier<GamificationState> {
   }
 
   /// セッション開始時にコンボとセッションXPをリセットする。
+  /// レベルアップを祝い終えたことを記録する（完了画面・離脱時に一度だけ
+  /// モーダルを出すため。呼ばないと画面再構築のたびに再表示される）。
+  void acknowledgeLevelUp() {
+    state = state.copyWith(sessionStartLevel: state.snapshot.level);
+  }
+
   void startSession() {
-    state = state.copyWith(combo: 0, sessionXp: 0);
+    state = state.copyWith(
+        combo: 0, sessionXp: 0, sessionStartLevel: state.snapshot.level);
   }
 }
 
