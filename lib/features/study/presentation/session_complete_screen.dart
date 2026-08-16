@@ -13,7 +13,6 @@ import 'package:ship_it_english/features/gamification/presentation/widgets/confe
 import 'package:ship_it_english/features/gamification/presentation/badges_screen.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/duck_mascot.dart';
 import 'package:ship_it_english/features/gamification/providers/badges_providers.dart';
-import 'package:ship_it_english/features/gamification/presentation/widgets/streak_widget.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/xp_progress_bar.dart';
 import 'package:ship_it_english/features/gamification/providers/gamification_providers.dart';
 import 'package:ship_it_english/features/home/providers/home_providers.dart';
@@ -121,93 +120,57 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
         body: Stack(
           children: [
             SafeArea(
-          child: Padding(
+          // 端末が小さくても必ず下の「ホームへ」ボタンまで到達できるよう
+          // 全体をスクロール可能にする（以前は Column 固定で溢れると戻れなかった）
+          child: SingleChildScrollView(
             padding: AppTheme.screenPadding,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // お祝いに弾むダッキー＋チェックマーク（達成感）
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                const SizedBox(height: 16),
+                // お祝いのヒーローはダッキー1体に集約
+                // （以前は ✓サークル＋ダッキー＋PERFECT帯＋大きな🔥が縦に並び、
+                //  お祝い要素が3段重なってくどかった）
+                DuckMascot(
+                  size: 76,
+                  mood: DuckMood.cheer,
+                  rank: rankForLevel(
+                      ref.watch(gamificationProvider).snapshot.level),
+                ),
+                const SizedBox(height: 14),
+                Text(strings.sessionCompleteTitle,
+                    style: AppTheme.headingLarge),
+                const SizedBox(height: 14),
+                // お祝いバッジはコンパクトなチップ1行にまとめる
+                // （PERFECT と 🔥ストリークを横並び・折り返し）
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    Container(
-                      width: 76,
-                      height: 76,
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        shape: BoxShape.circle,
-                        boxShadow: AppTheme.buttonShadow,
+                    if (result.perfect)
+                      _CelebrationChip(
+                        label:
+                            '\u2b50 ${strings.perfectTitle} +${GamificationConfig.perfectBonusXp} XP',
+                        color: const Color(0xFFB47D00),
+                        background: const Color(0xFFFFE9A8),
+                        border: const Color(0xFFF3CD5E),
                       ),
-                      child: const Icon(Icons.check_rounded,
-                          color: Colors.white, size: 42),
-                    ),
-                    const SizedBox(width: 10),
-                    DuckMascot(
-                      size: 52,
-                      mood: DuckMood.cheer,
-                      rank: rankForLevel(
-                          ref.watch(gamificationProvider).snapshot.level),
+                    _CelebrationChip(
+                      label: '\ud83d\udd25 ${strings.streak(result.streakCount)}'
+                          '${goalAchieved ? ' \u2713' : ''}',
+                      color: AppTheme.streakFire,
+                      background: AppTheme.streakFire.withOpacity(0.10),
+                      border: AppTheme.streakFire.withOpacity(0.40),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Text(strings.sessionCompleteTitle,
-                    style: AppTheme.headingLarge),
-                if (result.perfect) ...[
-                  const SizedBox(height: 10),
-                  // パーフェクトセッション（全問1発「覚えてた」）の証
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [
-                        Color(0xFFFFB300),
-                        Color(0xFFFFD54F),
-                      ]),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFFB300).withOpacity(0.45),
-                          blurRadius: 14,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          '\u2b50 ${strings.perfectTitle}',
-                          style: const TextStyle(
-                            fontFamily: AppTheme.monoFont,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          strings.perfectCaption(
-                              GamificationConfig.perfectBonusXp),
-                          style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
+                if (goalAchieved) ...[
+                  const SizedBox(height: 8),
+                  Text(strings.streakGoalReached,
+                      style: AppTheme.captionText
+                          .copyWith(color: AppTheme.streakFire)),
                 ],
                 const SizedBox(height: 20),
-                // デイリーストリーク（大・達成で炎が強発光＋チェック）
-                StreakWidget(
-                  count: result.streakCount,
-                  label: strings.streak(result.streakCount),
-                  goalAchieved: goalAchieved,
-                  achievedMessage:
-                      goalAchieved ? strings.streakGoalReached : null,
-                  large: true,
-                ),
-                const SizedBox(height: 24),
                 Container(
                   width: double.infinity,
                   decoration: AppTheme.cardDecoration,
@@ -284,6 +247,41 @@ class _SessionCompleteScreenState extends ConsumerState<SessionCompleteScreen> {
             const ConfettiCelebration(),
           ],
         ),
+        ),
+      ),
+    );
+  }
+}
+
+/// お祝いチップ（PERFECT / 🔥ストリーク）。完了画面の祝辞を1行にまとめる部品。
+class _CelebrationChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final Color background;
+  final Color? border;
+
+  const _CelebrationChip({
+    required this.label,
+    required this.color,
+    required this.background,
+    this.border,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: border ?? background, width: 1.5),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          color: color,
         ),
       ),
     );

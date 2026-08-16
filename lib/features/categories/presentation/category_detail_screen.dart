@@ -209,9 +209,12 @@ class _UnitsSection extends ConsumerWidget {
           ),
         ),
         SizedBox(
-          height: 118,
+          // タイルの下エッジ影（+3px）がビューポートで見切れないよう、
+          // 影ぶんの余白を高さと下パディングで確保する
+          height: 122,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.only(bottom: 4),
             itemCount: units.length,
             separatorBuilder: (_, __) => const SizedBox(width: 10),
             itemBuilder: (context, i) {
