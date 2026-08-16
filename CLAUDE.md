@@ -274,7 +274,7 @@ test/
   - `shared/widgets/gradient_button.dart` … 主要CTA（下エッジ押下・ハプティクス）。ElevatedButton の代わりにこれ
   - `shared/widgets/app_background.dart` … 背景グラデ。タブ画面は AppShell が包む。**フルスクリーン遷移は
     `AppBackground(child: Scaffold(...))` で Scaffold ごと包む**（bodyだけだと周囲が黒く残る）
-- **アイコンは `_rounded` 系で統一**／マスコットはピクセルのダッキー（`duck_mascot.dart`・ランク進化）
+- **アイコンは `_rounded` 系で統一**／マスコットは滑らかイラストのダッキー（`assets/images/ducky.png`・マスターSVGは `assets/icon/app_icon_master.svg`・ランクアクセサリーは `duck_mascot.dart` がベクター描画で上書き）
 - デザインプレビューの起動: `flutter run -t lib/main_design_preview.dart`（本体無変更・8案スワイプ比較）
 
 ---

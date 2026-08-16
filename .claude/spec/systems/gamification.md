@@ -66,13 +66,13 @@
 
 ## マスコット「ダッキー」（[duck_mascot.dart](../../../lib/features/gamification/presentation/widgets/duck_mascot.dart)）
 - **エンジニア文化の「ラバーダック・デバッグ」にちなんだ相棒**。感情的つながり（アプリの人格）を作る。
-- **CustomPainter のドット絵**（16×14グリッド・画像アセット不要・オフライン）。`DuckMood`＝idle（ゆっくり浮遊）/ happy（弾む）/ cheer（大きく弾む＋首振り）。
+- **滑らかイラスト**（`assets/images/ducky.png` 512px透過。マスターSVGは `assets/icon/app_icon_master.svg`＝アプリアイコンと同一アートワーク。2026-08-16にドット絵から刷新・旧ドット絵は git 履歴参照）。`DuckMood`＝idle（ゆっくり浮遊）/ happy（弾む）/ cheer（大きく弾む＋首振り）。
 - 出す場所：
   - **Home AppBar 常駐**（`_HomeDuck`）：今日学習済みなら happy。**タップでランダムな一言**（`AppStrings.duckLines`・応援/Tips）を SnackBar 表示。
   - **セッション完了画面**：チェックマーク横で cheer。
   - **毎日リマインダー通知**：本文を `duckReminderLines` からランダム選択（🦆の人格。起動ごとの rescheduleAll で文面が変わる）。
 - 文言はすべて `AppStrings`（ja/en）。
-- **ランク進化**：`DuckMascot(rank:)` で称号に応じた見た目に進化（ドット絵の上書き差分のみ・アセット不要）。Intern=素 / Junior=青キャップ / Engineer=ゴーグル眼鏡 / Senior=ヘッドホン / Staff=赤ネクタイ / Principal=金の王冠 / Distinguished=王冠＋サングラス＋きらめき。ホーム・完了画面・バッジ画面のショーケース（称号名＋LV表示）で反映＝「レベルが上がると何かある」の受け皿。
+- **ランク進化**：`DuckMascot(rank:)` で称号に応じた見た目に進化（`_AccessoryPainter` が画像の上にベクター描画で上書き。座標は1024基準の正規化値）。Intern=素 / Junior=青キャップ / Engineer=ゴーグル眼鏡 / Senior=ヘッドホン / Staff=赤ネクタイ / Principal=金の王冠 / Distinguished=王冠＋サングラス＋きらめき。ホーム・完了画面・バッジ画面のショーケース（称号名＋LV表示）で反映＝「レベルが上がると何かある」の受け皿。
 
 ## マイルストーンバッジ（[badges.dart](../../../lib/features/gamification/domain/badges.dart) / [badges_providers.dart](../../../lib/features/gamification/providers/badges_providers.dart) / [badges_screen.dart](../../../lib/features/gamification/presentation/badges_screen.dart)）
 - **目的**：中長期の継続動機（コレクション欲・「次のバッジまであと少し」）。判定は端末内統計のみ・通信なし。

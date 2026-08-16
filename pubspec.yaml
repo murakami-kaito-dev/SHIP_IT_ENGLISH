@@ -57,8 +57,10 @@ flutter:
     - assets/audio/en-US/
     - assets/audio/ja-JP/
     - assets/audio/sfx/
+    # マスコット「ダッキー」の本体イラスト（マスターは assets/icon/app_icon_master.svg）
+    - assets/images/
 
-# アプリアイコン生成設定。マスター画像は assets/icon/app_icon.png（2048x2048）。
+# アプリアイコン生成設定。マスター画像は assets/icon/app_icon.png（1024x1024・SVG元データは app_icon_master.svg）。
 # 変更したら `dart run flutter_launcher_icons` を実行して各サイズを再生成する。
 # iOSはアルファチャンネル禁止のため remove_alpha_ios で除去する。
 flutter_launcher_icons:
