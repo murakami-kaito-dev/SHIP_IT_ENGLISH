@@ -6,6 +6,16 @@
 - bundle id: `jp.co.shipitenglish.app` / App Store Connect app id: `6799681201`
 - ビルド番号は**単調増加**。失敗した番号も再利用しない。
 
+## バージョンタグ
+
+| タグ | コミット | build | 位置づけ |
+|---|---|---|---|
+| `v1.0.0` | `7b86d8c` | 4 | **App Store 審査提出版**（2026-08-11 提出・審査待ち） |
+| `v2.0.0` | `2e30a79`〜 | 8 | TestFlight 配信版（アイコン刷新ほか。**審査未提出**） |
+
+> ⚠️ `v2.0.0` タグ時点でも `pubspec.yaml` は `1.0.0+8` のまま。
+> **2.0.0 としてストアに出す場合は `pubspec.yaml` と `AppConstants.appVersion` の更新が必要**（未実施）。
+
 ---
 
 ## 1.0.0 (build 8) — 2026-08-17 · TestFlight
