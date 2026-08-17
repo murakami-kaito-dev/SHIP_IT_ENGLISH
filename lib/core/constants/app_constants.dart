@@ -1,6 +1,6 @@
 class AppConstants {
   // App info（pubspec.yaml の version と手動で同期すること）
-  static const String appVersion = '1.0.0';
+  static const String appVersion = '2.0.0';
 
   // SRS
   static const double initialEaseFactor = 2.5;
