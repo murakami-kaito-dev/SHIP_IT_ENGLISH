@@ -11,7 +11,7 @@
 | タグ | コミット | version | 位置づけ |
 |---|---|---|---|
 | `v1.0.0` | `7b86d8c` | 1.0.0 (4) | **App Store 公開済み**（2026-08-17 承認・配信中） |
-| `v2.0.0` | `6c7ba20` | 2.0.0 (9) | **審査提出済み**（2026-08-17 提出・WAITING_FOR_REVIEW） |
+| `v2.0.0` | `5812050` | 2.0.0 (10) | **審査提出済み**（2026-08-21 再提出・WAITING_FOR_REVIEW）※build 9 から付け替え |
 
 > `v2.0.0` は「次バージョンの配信申請を出す対象」なので、`pubspec.yaml` と
 > `AppConstants.appVersion` を **2.0.0 に揃えたコミット**に付ける。
@@ -19,10 +19,11 @@
 
 ---
 
-## 2.0.0 (build 10) — 2026-08-21 · TestFlight（動作確認用）
+## 2.0.0 (build 10) — 2026-08-21 · **App Store 再申請（審査中）** ＋ TestFlight
 
-審査中の build 9 とは別に、**UX不具合2件の修正を実機確認するための TestFlight ビルド**。
-build 9（審査中）には紐付けていない＝申請中のバージョンには影響しない。
+**build 9 の審査提出を取り下げ（開発者取り下げ）、同じバージョン 2.0.0 のまま build 10 で再提出**。
+UX不具合2件の修正を織り込んだもの。タグ `v2.0.0` も build 9 のコミットから付け替えた
+（コミット `5812050`）。
 
 - **ユニット学習を終えると行き止まりになるバグを修正**：完了後に `context.go('/category/<id>')`
   していたため履歴が作り直され、戻るボタンもタブも無い画面に閉じ込められていた（アプリ再起動しか
@@ -34,10 +35,28 @@ build 9（審査中）には紐付けていない＝申請中のバージョン�
 - **クイズの「続ける」ボタンをカード下部に固定**：以前はスクロール末尾にあり、選択肢が多いと
   画面外に隠れて見つからなかった
 
-**配信**: TestFlight にアップロード済み（Delivery UUID: `80c2fcd4-faf5-4bf0-bb19-05e271394db3`・処理完了 `VALID`）
-**状態**: **審査未提出**（TestFlight のみ。App Store 審査中なのは build 9）
+**配信**: App Store Connect にアップロード済み（Delivery UUID: `80c2fcd4-faf5-4bf0-bb19-05e271394db3`・`VALID`）。TestFlight でも配信可能
+**状態**: **審査提出済み（2026-08-21 04:21 UTC 再提出 → WAITING_FOR_REVIEW）**
+**リリース方法**: `AFTER_APPROVAL`（承認と同時に自動公開）
 **検証**: `flutter analyze` エラー0 / `flutter test` 116件パス
 **警告**: altool 90068（MinimumOSVersion 13.0。2027年春から15.0以上が必須）
+
+### 取り下げ→再提出の手順（API で完結した）
+
+1. `PATCH /v1/reviewSubmissions/{id}` `{"canceled":true}` → `CANCELING` → `COMPLETE`。
+   バージョンは **`DEVELOPER_REJECTED`（＝編集可能）** に戻る。**バージョン番号 2.0.0 はそのまま**
+   （新しい appStoreVersion を作る必要はない。説明文・プロモ・whatsNew・スクショも保持された）
+2. `PATCH /v1/appStoreVersions/{ver}/relationships/build` で build 10 を紐付け
+3. `POST /v1/reviewSubmissions` → `POST /v1/reviewSubmissionItems`（appStoreVersion を追加）→
+   `PATCH /v1/reviewSubmissions/{id}` `{"submitted":true}` → `WAITING_FOR_REVIEW`
+
+⚠️ **審査キューは並び直し**（8/17 から待っていた順番は失われ、8/21 提出として並ぶ）。
+
+### スクリーンショットの実態（過去の注記を訂正）
+
+build 9 のエントリに「v1.0 当時のまま（デザイン刷新前）」と書いたが、**その後 8/17 夜に
+刷新後の5枚（`~/Downloads/01〜05.png`・1320×2868）へ差し替え済み**だった。
+今回 ASC 上の5枚とローカルのファイルサイズが完全一致することを確認済み。差し替え不要。
 
 ### ⚠️ ビルド手順の注意（今回ハマった点）
 
@@ -71,7 +90,9 @@ v1.0.0 公開後の**初のアップデート**。機能面の中身は TestFlig
   クイズ多様化／ホーム画面ウィジェット／デザイン刷新／通知改善 ほか）
 
 **配信**: App Store Connect にアップロード済み（Delivery UUID: `e96d1158-9bac-4bc1-a00b-adec82030798`）
-**状態**: **審査提出済み（2026-08-17 開発者が提出ボタンを押下 → WAITING_FOR_REVIEW）**
+**状態**: **取り下げ済み（2026-08-21）**。2026-08-17 に提出し `WAITING_FOR_REVIEW` だったが、
+UX不具合2件が見つかったため審査提出を取り下げ、**同じ 2.0.0 のまま build 10 で再提出**した。
+このビルド自体は審査に出ていない（TestFlight には残る）
 **リリース方法**: `AFTER_APPROVAL`（承認と同時に自動公開）
 **検証**: `flutter analyze` エラー0
 
