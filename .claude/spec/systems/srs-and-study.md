@@ -35,5 +35,6 @@
 - **卒業テスト**：`/study?category=X&from=A&to=B&mode=unit&unit=N` → `loadUnitTestSession`（範囲全カード・ランダム順・**1周のみ＝忘れたでも再出題しない**（`StudySessionState.unitTest`）・評価は通常どおりSRSに反映）。
 - **出題は必ずクイズ**（`unitTestModeFor`＝choice/audio/cloze。flipなし）。
 - **合否**：ミス（forgot）が `maxMistakes=2` 以下でクリア（`unitTestPassed`）。クリア→`clearedUnitsProvider.markCleared`（prefs `keyClearedUnits`・`categoryId:unitIndex`）＋ボーナスXP `clearXp=50`＋🏆ダイアログ（紙吹雪）→カテゴリへ。不合格→「あと少し」ダイアログ（再挑戦 or 戻る。再挑戦は `_retryUnitTest` で同ユニットを読み直し）。
+- **終了後の戻り先**：`popOrGo(context, '/categories')` で**元のカテゴリ詳細へ pop**（`go('/category/:id')` は履歴を作り直して行き止まりになるため禁止。[navigation.md](../navigation.md) の「行き止まりを作らない」）。
 - **UI**：カテゴリ詳細の先頭 `_UnitsSection`（横スクロールのユニットタイル：番号・#範囲・学習x/y・挑戦ボタン/クリアバッジ🏆・クリア数 n/m）。
 - テスト：[units_test.dart](../../../test/unit/units_test.dart)（分割・被覆・合否・形式・クリア永続化）。

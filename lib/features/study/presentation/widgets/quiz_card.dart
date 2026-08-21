@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/core/services/tts_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
@@ -9,14 +8,21 @@ import 'package:ship_it_english/features/study/domain/quiz.dart';
 import 'package:ship_it_english/shared/widgets/gradient_button.dart';
 
 /// クイズ形式の出題カード（4択・音声・穴埋め）。
-/// 選択肢をタップ→正誤ハイライト＋答え合わせパネル→「つづける」で
-/// [onAnswered] に正誤を返す（呼び出し側が SRS 評価に変換する）。
+/// 選択肢をタップ→正誤ハイライト＋答え合わせパネルと同時に [onSelected] へ正誤を
+/// 通知（呼び出し側が SRS 記録＋効果音・XP演出を**この瞬間に**発火する）→
+/// 「続ける」で [onContinue]（次のカードへ送るだけ）。
+/// 答え合わせパネルと「続ける」はカード下部に**固定表示**（スクロール不要で必ず見える）。
 class QuizCard extends StatefulWidget {
   final TechCard card;
   final QuizQuestion question;
   final AppStrings strings;
   final LanguageMode mode;
-  final ValueChanged<bool> onAnswered;
+
+  /// 選択肢を選んだ瞬間（判定表示と同時）に正誤を通知する。
+  final ValueChanged<bool> onSelected;
+
+  /// 「続ける」押下（記録・演出は済んでいるので次のカードへ進むだけ）。
+  final VoidCallback onContinue;
 
   const QuizCard({
     super.key,
@@ -24,7 +30,8 @@ class QuizCard extends StatefulWidget {
     required this.question,
     required this.strings,
     required this.mode,
-    required this.onAnswered,
+    required this.onSelected,
+    required this.onContinue,
   });
 
   @override
@@ -64,8 +71,10 @@ class _QuizCardState extends State<QuizCard> {
 
   void _select(int index) {
     if (_answered) return;
-    HapticFeedback.selectionClick();
     setState(() => _selected = index);
+    // 判定表示と同じ瞬間に呼び出し側へ通知（効果音・XP演出をここに揃える。
+    // ハプティクスも呼び出し側の SoundService が正誤に応じて鳴らす）
+    widget.onSelected(_correct);
   }
 
   String get _promptHint => switch (widget.question.mode) {
@@ -116,7 +125,13 @@ class _QuizCardState extends State<QuizCard> {
         border: AppTheme.cardBorder,
         boxShadow: AppTheme.heroShadow,
       ),
-      child: SingleChildScrollView(
+      // 設問・選択肢はスクロール領域、答え合わせ＋「続ける」は下部固定。
+      // （以前はボタンもスクロール末尾にあり、選択肢が多いと画面外に隠れて
+      //  「続ける」が見つからなかった）
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
         padding: AppTheme.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -184,22 +199,36 @@ class _QuizCardState extends State<QuizCard> {
               ),
               const SizedBox(height: 10),
             ],
-            // --- 答え合わせパネル ---
-            if (_answered) ...[
-              const SizedBox(height: 4),
-              _AnswerPanel(
-                correct: _correct,
-                card: widget.card,
-                strings: widget.strings,
-              ),
-              const SizedBox(height: 12),
-              GradientButton(
-                label: widget.strings.continueButton,
-                onPressed: () => widget.onAnswered(_correct),
-              ),
-            ],
           ],
         ),
+            ),
+          ),
+          // --- 答え合わせパネル＋「続ける」（下部固定・スクロール不要） ---
+          if (_answered)
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                AppTheme.cardPadding.left,
+                4,
+                AppTheme.cardPadding.right,
+                AppTheme.cardPadding.bottom,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _AnswerPanel(
+                    correct: _correct,
+                    card: widget.card,
+                    strings: widget.strings,
+                  ),
+                  const SizedBox(height: 12),
+                  GradientButton(
+                    label: widget.strings.continueButton,
+                    onPressed: widget.onContinue,
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -17,6 +17,10 @@ paths:
 - **時刻の選択に `showTimePicker`（Materialのアナログ文字盤）を使わない** → `shared/widgets/wheel_time_picker.dart` の `showWheelTimePicker` を使う。「時」「分」は数字に付けず列見出しに置く（英語モードで "08Hour" になるため）
 - **UI文言はハードコード禁止**: `core/i18n/app_strings.dart` に ja/en 両方を定義し、`stringsProvider` 経由で取得する
 
+## 画面遷移（go_router）
+- **「戻る」に `context.go()` を使わない** → `popOrGo(context, フォールバック先)`（`core/utils/nav_utils.dart`）を使う。`go` は履歴を作り直すため、タブ（ShellRoute）の外の全画面ルートへ go すると**そのページ1枚だけのスタック＝戻るボタンもタブも無い行き止まり**になる（アプリ再起動しか脱出できない。ユニットテスト終了後の `go('/category/:id')` で実際に発生）
+- **`go` の遷移先になり得る全画面ルートは、戻るボタンを `automaticallyImplyLeading` 任せにしない**。pop 先が無いと黙って消えるため、`leading` を明示して常に脱出口を出す（恒久ガード: `test/widget/nav_dead_end_test.dart`）
+
 ## 状態管理 / データ更新
 - **`riverpod_generator` / `build_runner` は導入済みだがコード生成は使っていない**（手動プロバイダーで統一）
 - **学習進捗を変更したら `invalidateProgressProviders(ref)` を呼ぶ**（`core/providers/progress_refresh.dart`）。ホーム・カテゴリのFutureProviderはキャッシュするため、これを忘れると古い集計が表示される

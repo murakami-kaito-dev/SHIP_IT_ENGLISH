@@ -19,6 +19,47 @@
 
 ---
 
+## 2.0.0 (build 10) — 2026-08-21 · TestFlight（動作確認用）
+
+審査中の build 9 とは別に、**UX不具合2件の修正を実機確認するための TestFlight ビルド**。
+build 9（審査中）には紐付けていない＝申請中のバージョンには影響しない。
+
+- **ユニット学習を終えると行き止まりになるバグを修正**：完了後に `context.go('/category/<id>')`
+  していたため履歴が作り直され、戻るボタンもタブも無い画面に閉じ込められていた（アプリ再起動しか
+  脱出できない）。`popOrGo()`（`core/utils/nav_utils.dart`）で pop して元のカテゴリ詳細へ戻す方式に統一。
+  カテゴリ詳細は戻るボタンを常時表示
+- **クイズの効果音のタイミングを判定表示と一致**：正誤ハイライトは選択時・音は「続ける」押下時で
+  ずれていた。`rateCard(advance: false)` ＋ `advanceAfterRating()` の2段階に分離し、SRS記録・XP・
+  効果音・演出を**選択肢を選んだ瞬間**に発火（「続ける」は次カードへ送るだけ）
+- **クイズの「続ける」ボタンをカード下部に固定**：以前はスクロール末尾にあり、選択肢が多いと
+  画面外に隠れて見つからなかった
+
+**配信**: TestFlight にアップロード済み（Delivery UUID: `80c2fcd4-faf5-4bf0-bb19-05e271394db3`・処理完了 `VALID`）
+**状態**: **審査未提出**（TestFlight のみ。App Store 審査中なのは build 9）
+**検証**: `flutter analyze` エラー0 / `flutter test` 116件パス
+**警告**: altool 90068（MinimumOSVersion 13.0。2027年春から15.0以上が必須）
+
+### ⚠️ ビルド手順の注意（今回ハマった点）
+
+`flutter build ipa --release` は **archive までは成功するが export で失敗する**（Xcode のアカウント
+資格情報が失効しており自動署名が「iOS Team Store Provisioning Profile」を掴むため。ウィジェット
+拡張のプロファイルが無い／App Groups が含まれないと言われる）。
+**手動署名で export し直す**のが正解（正しいプロファイルはローカルに導入済み）:
+
+```bash
+flutter build ipa --release          # export で失敗するが archive は出来ている
+xcrun xcodebuild -exportArchive \
+  -archivePath build/ios/archive/Runner.xcarchive \
+  -exportPath build/ios/ipa \
+  -exportOptionsPlist <manual署名のplist>
+```
+plist は `signingStyle=manual` / `signingCertificate=Apple Distribution` /
+`provisioningProfiles = {jp.co.shipitenglish.app: "ShipIt English AppStore",
+jp.co.shipitenglish.app.widget: "ShipIt English Widget AppStore"}`。
+（`-allowProvisioningUpdates` ＋ ASC APIキーの自動署名は "Cloud signing permission error" で不可）
+
+---
+
 ## 2.0.0 (build 9) — 2026-08-17 · App Store アップデート申請（審査中）
 
 v1.0.0 公開後の**初のアップデート**。機能面の中身は TestFlight の 1.0.0 (8) と同一で、

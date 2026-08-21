@@ -19,7 +19,7 @@
   - 以前は同形の横棒が6px間隔で2本並び、下のバーは AppBar の数字と情報が完全重複していた。**横棒を2本並べないこと。**
 - 中央：**出題形式によって切り替わる**（[domain/quiz.dart](../../../lib/features/study/domain/quiz.dart) `quizModeFor`）。
   - **flip（従来）**：`SwipeCardWrapper`（左=忘れた/右=覚えてた・閾値30%）で包んだ `FlipCard`（Y軸3Dフリップ300ms・表=英語→裏=訳/例文/使用場面・スピーカーで読み上げ）。
-  - **choice / audio / cloze（クイズ）**：[quiz_card.dart](../../../lib/features/study/presentation/widgets/quiz_card.dart) `QuizCard`（設問＋4択→正誤ハイライト→答え合わせパネル→「つづける」）。誤答選択肢は同カテゴリから3枚（`quizDistractorsProvider`・cardIdシードで決定的＝リビルドで入れ替わらない）。取得失敗時は flip にフォールバック。
+  - **choice / audio / cloze（クイズ）**：[quiz_card.dart](../../../lib/features/study/presentation/widgets/quiz_card.dart) `QuizCard`（設問＋4択→正誤ハイライト＋答え合わせパネル→「続ける」）。**設問・選択肢はスクロール領域、答え合わせパネル＋「続ける」はカード下部に固定表示**（スクロールしないとボタンが見えない状態を作らない）。誤答選択肢は同カテゴリから3枚（`quizDistractorsProvider`・cardIdシードで決定的＝リビルドで入れ替わらない）。取得失敗時は flip にフォールバック。
   - オーバーレイ（IgnorePointer）：`ComboOverlay`（COMBO×N）、`SparkleBurst`（正解時）、`XpGainPopup`（+XP）、不正解時 `_KeepGoingChip`（どんまい！）。
   - 画面枠：`FeverFrame`（FEVER中パルス発光）。
 - 下部：`RatingButtons`（忘れた/曖昧/覚えてた＋各ボタン下に**次回復習間隔**「10分/1日/3日」=`SrsEngine.projectedInterval`）。**flip形式の裏面表示時のみ**（クイズは選択肢＋つづけるがカード内にあるため下部は出さない）。
@@ -28,7 +28,13 @@
 - **新規カード・再出題（忘れた後）は必ず flip**（まず学ぶ／学び直す）。復習カードのみクイズ対象。
 - 抽選は `quizModeFor(cardId, sessionSeed)` で**セッション内決定的**（flip40% / choice25% / audio20% / cloze15%）。シードは `_quizSeed`（画面Stateで固定）。
 - 形式の向き（`buildQuizQuestion`）：ja=設問英語→選択肢和訳 / en=設問和訳→選択肢英語。audio は `speakTarget` と同じ向きで自動再生＋タップ再生。cloze は英語例文の穴埋め（`clozeExample`。**enモード・フレーズが例文に無い場合は choice にフォールバック**）＋例文訳を補助表示。
-- **クイズの正誤→SRS評価**：正解=`remembered` / 不正解=`forgot`（`_handleQuizAnswered` が `flipCard()`→`_handleRating` を呼ぶ。isFlipped 前提の `rateCard` を満たすため）。不正解カードは再出題され flip で学び直す。
+- **クイズの正誤→SRS評価は2段階**（判定表示と効果音・XP演出のタイミングを一致させるため）：
+  1. **選択肢を選んだ瞬間**（`onSelected` → `_handleQuizSelected`）：`flipCard()`→`rateCard(rating, advance: false)`（SRS記録・完了カウント加算・再出題キュー積みまで行うが**次のカードへ進まない**＝`awaitingAdvance=true`）→`registerAnswer`→**効果音・XP・コンボ演出をここで発火**→クエスト記録。正解=`remembered` / 不正解=`forgot`。
+  2. **「続ける」押下**（`onContinue` → `_handleQuizContinue`）：`advanceAfterRating()` で次のカードへ送るだけ（最後のカードならここで `phase=completed`）。
+  - ⚠️ 効果音を「続ける」側で鳴らさないこと（判定表示とずれてUXが壊れる。2026-08-20修正）。
+  - ⚠️ `awaitingAdvance` 中は `quizModeFor` の `isRetry` 判定を素通しにしない（不正解の瞬間に retryCount が増え、表示中のクイズが flip に化けて答え合わせが消える）。study_screen 側で `!state.awaitingAdvance &&` を前置してガード済み。
+  - 不正解カードは再出題され flip で学び直す。答え合わせ表示中に離脱しても評価は記録済み（データ欠落なし）。
+  - テスト：[study_session_test.dart](../../../test/unit/study_session_test.dart)「クイズの2段階評価」グループ。
 - テスト：[quiz_modes_test.dart](../../../test/unit/quiz_modes_test.dart)（決定性・新規/再出題=flip・空欄化・選択肢4/正解1・向き・並び安定）。
 
 ## 評価フロー `_handleRating`

@@ -230,6 +230,8 @@ test/
 | カード詳細で評価しても一覧の表示が変わらない | 一覧プロバイダーを再取得していなかった | `invalidateProgressProviders()` が**カード一覧系のfamilyプロバイダーも無効化**するようにした（引数なしinvalidateで全インスタンスが対象）。シートを開いたまま裏の一覧が更新される |
 | 途中でやめて再開すると新規カウントが 0/40 に戻る（減らない） | `getNewCards(limit)` は毎回上限まで新規を補充する。学習済みは status!='new' なので除外されるだけで、残り枠の概念が無かった | 「その日の残り新規枠 = 1日の上限 − 今日学習した新規（`daily_stats.new_cards`）」を `getNewCardsStudiedToday()` で算出し、`loadSession` と `dailySessionInfoProvider` の両方で適用。3枚やって再開すると 0/37 になる（＝1日の新規枠を消化する挙動） |
 | フルスクリーン画面の周囲が黒くなる | 背景グラデを body だけに敷いていたため AppBar・ステータスバー裏やコンテンツ下部が黒く残った | `AppBackground(child: Scaffold(...))` で Scaffold ごと包む形に変更（AppShell と同じ方式） |
+| ユニットテストを終えると戻るボタンもタブも無い画面に閉じ込められる（アプリ再起動しか脱出手段が無い） | 完了後に `context.go('/category/<id>')` していた。`go` は履歴を作り直すため、タブ（ShellRoute）の外にある `/category/:id` 1枚だけのスタックになり、pop 先が無く AppBar が戻るボタンを省略・タブも無い＝行き止まりになっていた | 戻る系の遷移を `popOrGo(context, fallback)`（`core/utils/nav_utils.dart`＝履歴があれば pop・無ければタブのある画面へ go）に統一。CategoryDetail は戻るボタンを自動生成に任せず常時表示。`test/widget/nav_dead_end_test.dart` で恒久ガード |
+| クイズで正誤判定の表示と効果音のタイミングがずれる（判定は選択時・音は「続ける」押下時）＋「続ける」ボタンがスクロールしないと見えない | 回答処理一式（SRS記録・XP・効果音）が「続ける」の `onAnswered` に載っていた／答え合わせパネル＋ボタンがスクロール領域の末尾にあった | `rateCard(advance: false)`＋`advanceAfterRating()` の2段階に分離し、記録・効果音・XP演出を**選択肢を選んだ瞬間**に発火（「続ける」は次カードへ送るだけ）。答え合わせパネル＋「続ける」はカード下部に固定表示。`awaitingAdvance` 中は `quizModeFor` の isRetry 判定をガード（不正解直後に flip へ化けるのを防ぐ）。`study_session_test.dart`「クイズの2段階評価」で恒久ガード |
 | ホームで新規枚数を±変更すると画面全体がちらつく | `dailySessionInfoProvider`（設定依存）の再計算中にローディング表示へ落ちていた | `sessionInfo.when(skipLoadingOnReload: true, ...)` で再取得中も前回値を表示 |
 
 ---

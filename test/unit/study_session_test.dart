@@ -127,6 +127,82 @@ void main() {
     });
   });
 
+  group('クイズの2段階評価（rateCard advance:false → advanceAfterRating）', () {
+    // 判定表示・効果音を「選択肢を選んだ瞬間」に揃えるため、クイズは
+    // 「記録（選択時）」と「次へ進む（続ける押下時）」を分離している。
+
+    test('advance:false は記録して留まり、advanceAfterRating で次のカードへ進む', () async {
+      final repo = _FakeRepo(newCards: [_card('a'), _card('b')]);
+      final notifier = StudySessionNotifier(repo, SrsEngine());
+      await notifier.loadSession(maxNewCards: 2);
+      final first = notifier.state.currentCard!;
+
+      await notifier.flipCard();
+      await notifier.rateCard(Rating.remembered, advance: false);
+
+      // 記録済み・カウント加算済みだが、カードは表示されたまま
+      expect(notifier.state.awaitingAdvance, true);
+      expect(notifier.state.currentCard!.id, first.id);
+      expect(notifier.state.completedUniqueCount, 1);
+      expect(repo.saved.containsKey(first.id), true, reason: 'SRSは選択時に保存');
+      expect(notifier.state.session.results, hasLength(1));
+
+      // 答え合わせ表示中の二重評価は無視される
+      await notifier.rateCard(Rating.forgot, advance: false);
+      expect(notifier.state.session.results, hasLength(1));
+
+      notifier.advanceAfterRating();
+      expect(notifier.state.awaitingAdvance, false);
+      expect(notifier.state.currentCard!.id, isNot(first.id));
+      expect(notifier.state.isFlipped, false);
+    });
+
+    test('最後のカードは advanceAfterRating で completed になる', () async {
+      final repo = _FakeRepo(newCards: [_card('only')]);
+      final notifier = StudySessionNotifier(repo, SrsEngine());
+      await notifier.loadSession(maxNewCards: 1);
+
+      await notifier.flipCard();
+      await notifier.rateCard(Rating.remembered, advance: false);
+      // 「続ける」を押すまでは完了扱いにしない（答え合わせを読ませる）
+      expect(notifier.state.phase, StudyPhase.studying);
+
+      notifier.advanceAfterRating();
+      expect(notifier.state.phase, StudyPhase.completed);
+      expect(notifier.state.currentCard, isNull);
+    });
+
+    test('「忘れた」advance:false でも再出題キューに積まれ、進むと再出題される', () async {
+      final repo = _FakeRepo(newCards: [_card('x')]);
+      final notifier = StudySessionNotifier(repo, SrsEngine());
+      await notifier.loadSession(maxNewCards: 1);
+
+      await notifier.flipCard();
+      await notifier.rateCard(Rating.forgot, advance: false);
+      expect(notifier.state.retryCount['x'], 1);
+
+      notifier.advanceAfterRating();
+      // 同じカードが再出題される（キュー末尾に積まれていた）
+      expect(notifier.state.currentCard!.id, 'x');
+      expect(notifier.state.phase, StudyPhase.studying);
+    });
+
+    test('ユニットテストでは「忘れた」advance:false でも再出題されない', () async {
+      final repo = _FakeRepo(newCards: [_card('u')]);
+      final notifier = StudySessionNotifier(repo, SrsEngine());
+      await notifier.loadSession(maxNewCards: 1);
+      // loadUnitTestSession は LocalCardRepository 前提のため、状態だけ揃える
+      notifier.state = notifier.state.copyWith(unitTest: true);
+
+      await notifier.flipCard();
+      await notifier.rateCard(Rating.forgot, advance: false);
+      notifier.advanceAfterRating();
+
+      expect(notifier.state.phase, StudyPhase.completed);
+      expect(notifier.state.currentCard, isNull);
+    });
+  });
+
   group('isPerfectSession（パーフェクト判定）', () {
     CardResult r(String id, Rating rating, {bool retry = false}) => CardResult(
         cardId: id, rating: rating, answeredAt: DateTime(2026), isRetry: retry);

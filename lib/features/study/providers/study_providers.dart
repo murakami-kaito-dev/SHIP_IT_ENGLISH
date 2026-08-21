@@ -60,6 +60,11 @@ class StudySessionState {
   /// 再出題しない（1周で終えてミス数を数え、合否を判定する）。
   final bool unitTest;
 
+  /// 評価は記録済みだが次のカードへ進んでいない（クイズの答え合わせ表示中）。
+  /// `rateCard(advance: false)` → 「続ける」で `advanceAfterRating()` の間 true。
+  /// この間 [queue] は残りのカード列で、[currentCard]（評価済みカード）を含まない。
+  final bool awaitingAdvance;
+
   const StudySessionState({
     required this.queue,
     required this.currentCard,
@@ -73,6 +78,7 @@ class StudySessionState {
     required this.reviewCardIds,
     this.currentProgress,
     this.unitTest = false,
+    this.awaitingAdvance = false,
   });
 
   /// currentCard を「変更なし」と「null にする」で区別するためのセンチネル。
@@ -92,6 +98,7 @@ class StudySessionState {
     Set<String>? reviewCardIds,
     Object? currentProgress = _keep,
     bool? unitTest,
+    bool? awaitingAdvance,
   }) {
     return StudySessionState(
       queue: queue ?? this.queue,
@@ -110,6 +117,7 @@ class StudySessionState {
           ? this.currentProgress
           : currentProgress as LearningProgress?,
       unitTest: unitTest ?? this.unitTest,
+      awaitingAdvance: awaitingAdvance ?? this.awaitingAdvance,
     );
   }
 }
@@ -183,6 +191,7 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
       newCardIds: newCardIds,
       reviewCardIds: reviewCardIds,
       unitTest: false,
+      awaitingAdvance: false,
     );
   }
 
@@ -214,6 +223,7 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
       newCardIds: {},
       reviewCardIds: cards.map((c) => c.id).toSet(),
       unitTest: false,
+      awaitingAdvance: false,
     );
   }
 
@@ -251,6 +261,7 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
       newCardIds: {},
       reviewCardIds: cards.map((c) => c.id).toSet(),
       unitTest: false,
+      awaitingAdvance: false,
     );
   }
 
@@ -285,6 +296,7 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
       newCardIds: {},
       reviewCardIds: cards.map((c) => c.id).toSet(),
       unitTest: true,
+      awaitingAdvance: false,
     );
   }
 
@@ -300,9 +312,16 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
     state = state.copyWith(isFlipped: true, currentProgress: progress);
   }
 
-  Future<void> rateCard(Rating rating) async {
+  /// カードを評価する。
+  ///
+  /// [advance] = false（クイズ形式）は**記録だけして次のカードへ進まない**。
+  /// 判定表示・効果音・XP演出を「選択肢を選んだ瞬間」に揃えつつ、答え合わせ
+  /// パネルを読む時間を確保するため（「続ける」で [advanceAfterRating] を呼ぶ）。
+  Future<void> rateCard(Rating rating, {bool advance = true}) async {
     final card = state.currentCard;
     if (card == null || !state.isFlipped) return;
+    // 答え合わせ表示中の二重評価を防ぐ（記録済みのため）
+    if (state.awaitingAdvance) return;
 
     // 現在の学習進捗を取得（なければ初期値）
     final progress =
@@ -340,6 +359,17 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
             ? state.completedUniqueCount
             : state.completedUniqueCount + 1;
 
+    // 記録だけして留まる（クイズの答え合わせ表示中。進むのは advanceAfterRating）
+    if (!advance) {
+      state = state.copyWith(
+        queue: newQueue,
+        completedUniqueCount: newCompletedCount,
+        retryCount: newRetryCount,
+        awaitingAdvance: true,
+      );
+      return;
+    }
+
     if (newQueue.isEmpty) {
       state = state.copyWith(
         queue: newQueue,
@@ -358,6 +388,27 @@ class StudySessionNotifier extends StateNotifier<StudySessionState> {
         retryCount: newRetryCount,
         // 次のカードをめくるまで前カードの間隔予測を消す
         currentProgress: null,
+      );
+    }
+  }
+
+  /// `rateCard(advance: false)` で留まった状態から次のカードへ進む
+  /// （クイズの「続ける」ボタン）。キューが空ならセッション完了にする。
+  void advanceAfterRating() {
+    if (!state.awaitingAdvance) return;
+    if (state.queue.isEmpty) {
+      state = state.copyWith(
+        currentCard: null,
+        isFlipped: false,
+        phase: StudyPhase.completed,
+        awaitingAdvance: false,
+      );
+    } else {
+      state = state.copyWith(
+        currentCard: state.queue.first,
+        isFlipped: false,
+        currentProgress: null,
+        awaitingAdvance: false,
       );
     }
   }

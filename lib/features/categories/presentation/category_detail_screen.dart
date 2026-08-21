@@ -6,6 +6,7 @@ import 'package:ship_it_english/core/monetization/monetization_config.dart';
 import 'package:ship_it_english/core/i18n/app_strings.dart';
 import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
+import 'package:ship_it_english/core/utils/nav_utils.dart';
 import 'package:ship_it_english/features/categories/providers/categories_providers.dart';
 import 'package:ship_it_english/features/study/domain/units.dart';
 import 'package:ship_it_english/features/study/presentation/widgets/range_study_sheet.dart';
@@ -24,6 +25,15 @@ class CategoryDetailScreen extends ConsumerWidget {
 
   const CategoryDetailScreen({super.key, required this.categoryId});
 
+  /// 戻るボタンは常に出す（自動生成に任せない）。
+  /// この画面はタブ（ShellRoute）の外にある全画面ルートなので、履歴が無い状態で
+  /// 表示されると AppBar が戻るボタンを省き、タブも無い＝行き止まりになる。
+  /// 履歴が無いときはカテゴリ一覧（タブあり）へ抜けられるようにしておく。
+  Widget _backButton(BuildContext context) => IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => popOrGo(context, '/categories'),
+      );
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cardsAsync = ref.watch(categoryCardsProvider(categoryId));
@@ -41,7 +51,10 @@ class CategoryDetailScreen extends ConsumerWidget {
       return AppBackground(
         child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(title: Text('${def['icon']} ${def['name']}')),
+        appBar: AppBar(
+          leading: _backButton(context),
+          title: Text('${def['icon']} ${def['name']}'),
+        ),
         body: Center(
             child: Padding(
               padding: AppTheme.screenPadding,
@@ -70,6 +83,7 @@ class CategoryDetailScreen extends ConsumerWidget {
       child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
+        leading: _backButton(context),
         title: Text('${def['icon']} ${def['name']}'),
       ),
       body: cardsAsync.when(

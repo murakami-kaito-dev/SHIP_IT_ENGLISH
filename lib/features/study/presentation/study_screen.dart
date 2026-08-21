@@ -10,6 +10,7 @@ import 'package:ship_it_english/core/providers/language_provider.dart';
 import 'package:ship_it_english/core/providers/progress_refresh.dart';
 import 'package:ship_it_english/core/services/sound_service.dart';
 import 'package:ship_it_english/core/theme/app_theme.dart';
+import 'package:ship_it_english/core/utils/nav_utils.dart';
 import 'package:ship_it_english/features/gamification/domain/gamification.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/combo_overlay.dart';
 import 'package:ship_it_english/features/gamification/presentation/widgets/fever_frame.dart';
@@ -180,12 +181,43 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     }
   }
 
-  /// クイズ形式（4択・音声・穴埋め）の回答を SRS 評価に変換する。
+  /// クイズ形式（4択・音声・穴埋め）で選択肢を選んだ瞬間の処理。
   /// 正解=覚えてた / 不正解=忘れた（不正解カードは再出題され、flip形式で学び直す）。
+  ///
+  /// SRS記録・XP/コンボ・**効果音と演出をここで発火**し、正誤ハイライトの表示と
+  /// 同じ瞬間に揃える（以前は「続ける」押下時に鳴っており、判定表示とずれていた）。
+  /// 次のカードへは進めない（答え合わせパネルを読む時間を確保し、
+  /// 「続ける」＝ [_handleQuizContinue] で送る）。
   /// rateCard は isFlipped を前提にするため、先に flipCard() で状態を揃える。
-  Future<void> _handleQuizAnswered(bool correct) async {
-    await ref.read(studySessionProvider.notifier).flipCard();
-    await _handleRating(correct ? Rating.remembered : Rating.forgot);
+  Future<void> _handleQuizSelected(bool correct) async {
+    final rating = correct ? Rating.remembered : Rating.forgot;
+    final notifier = ref.read(studySessionProvider.notifier);
+
+    // 「1回で正解」か（＝コンボ対象）を評価前に判定する
+    final before = ref.read(studySessionProvider);
+    final cardId = before.currentCard?.id;
+    final firstTry = cardId == null || (before.retryCount[cardId] ?? 0) == 0;
+
+    await notifier.flipCard();
+    await notifier.rateCard(rating, advance: false);
+
+    final outcome = await ref
+        .read(gamificationProvider.notifier)
+        .registerAnswer(rating: rating, firstTry: firstTry);
+    _fireEffects(outcome);
+
+    await ref
+        .read(dailyQuestsProvider.notifier)
+        .recordAnswer(rating: rating, combo: outcome.combo);
+  }
+
+  /// クイズの「続ける」＝次のカードへ送るだけ
+  /// （判定・記録・音・演出は [_handleQuizSelected] で発火済み）。
+  Future<void> _handleQuizContinue() async {
+    ref.read(studySessionProvider.notifier).advanceAfterRating();
+    if (ref.read(studySessionProvider).phase == StudyPhase.completed) {
+      await _completeSession();
+    }
   }
 
   /// 評価結果に応じて音・振動・オーバーレイを発火する。
@@ -291,7 +323,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
           );
         }
       }
-      if (mounted) context.go('/category/$categoryId');
+      if (mounted) _backToCategory();
       return;
     }
 
@@ -302,9 +334,16 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     if (retry == true) {
       await _retryUnitTest();
     } else {
-      context.go('/category/$categoryId');
+      _backToCategory();
     }
   }
+
+  /// ユニットテスト終了後に、テストを始めたカテゴリ詳細画面へ戻る。
+  ///
+  /// 以前は `context.go('/category/<id>')` していたが、go は履歴を作り直すため
+  /// カテゴリ詳細1枚だけのスタックになり、**戻るボタンもタブも無い行き止まり**に
+  /// なっていた（アプリを再起動するしか脱出できない）。push で来ているので pop で戻す。
+  void _backToCategory() => popOrGo(context, '/categories');
 
   /// 不合格からの再挑戦（同じユニットを読み込み直す）。
   Future<void> _retryUnitTest() async {
@@ -432,7 +471,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
 
     // まだ何も評価していない → 記録するものは無いのでそのまま戻る
     if (state.completedUniqueCount == 0) {
-      if (mounted) context.go('/');
+      if (mounted) popOrGo(context, '/');
       return;
     }
 
@@ -488,7 +527,9 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
       );
       ref.read(gamificationProvider.notifier).acknowledgeLevelUp();
     }
-    if (mounted) context.go('/');
+    // 来た画面（ホーム／カテゴリ詳細）へ戻す。go('/') 固定だと、カテゴリから
+    // 始めた学習を抜けたときに一覧の位置を失う。
+    if (mounted) popOrGo(context, '/');
   }
 
   @override
@@ -531,7 +572,12 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
               ? quizModeFor(
                   cardId: currentCard.id,
                   isNewCard: state.newCardIds.contains(currentCard.id),
-                  isRetry: (state.retryCount[currentCard.id] ?? 0) > 0,
+                  // 答え合わせ表示中（awaitingAdvance）は出題時の判定を維持する。
+                  // クイズで不正解を選んだ瞬間に retryCount が増えるため、素通し
+                  // すると isRetry=true → flip に化けて答え合わせ画面が消えて
+                  // しまう（クイズが出る＝出題時は必ず非リトライ）。
+                  isRetry: !state.awaitingAdvance &&
+                      (state.retryCount[currentCard.id] ?? 0) > 0,
                   sessionSeed: _quizSeed,
                 )
               : QuizMode.flip;
@@ -549,7 +595,7 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.pop(),
+            onPressed: () => popOrGo(context, '/'),
           ),
         ),
         body: Center(
@@ -704,7 +750,8 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
                                     ),
                                     strings: strings,
                                     mode: mode,
-                                    onAnswered: _handleQuizAnswered,
+                                    onSelected: _handleQuizSelected,
+                                    onContinue: _handleQuizContinue,
                                   ),
                                 ),
                           // 正解時のスパークル（カード中心から弾ける）
